@@ -1,0 +1,71 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
+import { jwtDecode } from 'jwt-decode';
+
+interface User {
+    id: number;
+    username: string;
+    email: string;
+}
+
+interface AuthContextType {
+    user: User | null;
+    loading: boolean;
+    login: (access: string, refresh: string) => void;
+    logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+
+    useEffect(() => {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            try {
+                const decoded: any = jwtDecode(token);
+                // In a real app, you might want to fetch full user info here
+                setUser({ id: decoded.user_id, username: '', email: '' });
+            } catch (err) {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+            }
+        }
+        setLoading(false);
+    }, []);
+
+    const login = (access: string, refresh: string) => {
+        localStorage.setItem('access_token', access);
+        localStorage.setItem('refresh_token', refresh);
+        const decoded: any = jwtDecode(access);
+        setUser({ id: decoded.user_id, username: '', email: '' });
+        router.push('/');
+    };
+
+    const logout = () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        setUser(null);
+        router.push('/login');
+    };
+
+    return (
+        <AuthContext.Provider value={{ user, loading, login, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
