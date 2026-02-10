@@ -34,15 +34,23 @@
   padding: 0;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
 }
 
@@ -59,6 +67,15 @@ button, input, select, textarea {
   border-radius: var(--radius);
   padding: 1.5rem;
   box-shadow: var(--shadow);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+  }
 }
 
 .btn {
@@ -72,6 +89,14 @@ button, input, select, textarea {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
 }
 
 .btn-primary {
@@ -98,6 +123,14 @@ button, input, select, textarea {
   color: var(--foreground);
   outline: none;
   transition: border-color 0.2s ease;
+  font-size: 1rem;
+}
+
+@media (max-width: 640px) {
+  .input-field {
+    font-size: 16px;
+    /* Prevents zoom on iOS */
+  }
 }
 
 .input-field:focus {
@@ -106,10 +139,30 @@ button, input, select, textarea {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
   animation: fadeIn 0.5s ease forwards;
+}
+
+/* Utility classes */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.break-words {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }

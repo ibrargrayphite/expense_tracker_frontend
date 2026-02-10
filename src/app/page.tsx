@@ -96,35 +96,35 @@ export default function Dashboard() {
         </header>
 
         {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           <div className="card bg-gradient-to-br from-indigo-600 to-indigo-800 text-white border-none">
             <div className="flex justify-between items-start mb-4">
-              <span className="opacity-80 font-medium">Total Balance</span>
-              <Landmark size={20} className="opacity-80" />
+              <span className="opacity-80 font-medium text-sm md:text-base">Total Balance</span>
+              <Landmark size={20} className="opacity-80 shrink-0" />
             </div>
-            <div className="text-3xl font-bold">Rs. {totalBalance.toLocaleString()}</div>
+            <div className="text-2xl md:text-3xl font-bold break-all">Rs. {totalBalance.toLocaleString()}</div>
             <div className="mt-4 text-xs font-semibold uppercase tracking-wider opacity-60">Across {data.accounts.length} accounts</div>
           </div>
 
           <div className="card">
             <div className="flex justify-between items-start mb-4">
-              <span className="text-secondary font-medium">Money Lent</span>
-              <div className="p-2 rounded-lg bg-green-500/10 text-green-500">
+              <span className="text-secondary font-medium text-sm md:text-base">Money Lent</span>
+              <div className="p-2 rounded-lg bg-green-500/10 text-green-500 shrink-0">
                 <ArrowUpRight size={20} />
               </div>
             </div>
-            <div className="text-3xl font-bold">Rs. {totalLent.toLocaleString()}</div>
+            <div className="text-2xl md:text-3xl font-bold break-all">Rs. {totalLent.toLocaleString()}</div>
             <div className="mt-4 text-xs font-semibold text-green-600 uppercase tracking-wider">To be received</div>
           </div>
 
-          <div className="card">
+          <div className="card sm:col-span-2 lg:col-span-1">
             <div className="flex justify-between items-start mb-4">
-              <span className="text-secondary font-medium">Loans Taken</span>
-              <div className="p-2 rounded-lg bg-red-500/10 text-red-500">
+              <span className="text-secondary font-medium text-sm md:text-base">Loans Taken</span>
+              <div className="p-2 rounded-lg bg-red-500/10 text-red-500 shrink-0">
                 <ArrowDownRight size={20} />
               </div>
             </div>
-            <div className="text-3xl font-bold">Rs. {totalTaken.toLocaleString()}</div>
+            <div className="text-2xl md:text-3xl font-bold break-all">Rs. {totalTaken.toLocaleString()}</div>
             <div className="mt-4 text-xs font-semibold text-red-600 uppercase tracking-wider">To be repaid</div>
           </div>
         </div>

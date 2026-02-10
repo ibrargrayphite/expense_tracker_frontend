@@ -130,59 +130,120 @@ export default function TransactionsPage() {
                     </button>
                 </div>
 
-                <div className="card p-0 overflow-hidden overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50">
-                            <tr>
-                                <th className="p-4 text-xs font-bold uppercase text-secondary">Date</th>
-                                <th className="p-4 text-xs font-bold uppercase text-secondary">Account</th>
-                                <th className="p-4 text-xs font-bold uppercase text-secondary">Type</th>
-                                <th className="p-4 text-xs font-bold uppercase text-secondary">Note</th>
-                                <th className="p-4 text-xs font-bold uppercase text-secondary text-right">Amount</th>
-                                <th className="p-4 text-xs font-bold uppercase text-secondary text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {data.transactions.map((t: any) => {
-                                const account = data.accounts.find((a: any) => a.id === t.account);
-                                return (
-                                    <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                                        <td className="p-4 text-sm font-medium whitespace-nowrap">
-                                            {format(new Date(t.date), 'MMM dd, yyyy')}
-                                        </td>
-                                        <td className="p-4 text-sm font-medium">
-                                            {account ? `${account.bank_name} (${account.account_name})` : '-'}
-                                        </td>
-                                        <td className="p-4">
+                {/* Desktop Table View */}
+                <div className="card p-0 overflow-hidden hidden md:block">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 dark:bg-slate-800/50">
+                                <tr>
+                                    <th className="p-4 text-xs font-bold uppercase text-secondary">Date</th>
+                                    <th className="p-4 text-xs font-bold uppercase text-secondary">Account</th>
+                                    <th className="p-4 text-xs font-bold uppercase text-secondary">Type</th>
+                                    <th className="p-4 text-xs font-bold uppercase text-secondary">Note</th>
+                                    <th className="p-4 text-xs font-bold uppercase text-secondary text-right">Amount</th>
+                                    <th className="p-4 text-xs font-bold uppercase text-secondary text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {data.transactions.map((t: Transaction) => {
+                                    const account = data.accounts.find((a: Account) => a.id === t.account);
+                                    return (
+                                        <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                                            <td className="p-4 text-sm font-medium whitespace-nowrap">
+                                                {format(new Date(t.date), 'MMM dd, yyyy')}
+                                            </td>
+                                            <td className="p-4 text-sm font-medium">
+                                                {account ? `${account.bank_name} (${account.account_name})` : '-'}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type)
+                                                        ? 'bg-green-500/10 text-green-600'
+                                                        : 'bg-red-500/10 text-red-600'
+                                                    }`}>
+                                                    {t.type.replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-sm max-w-xs truncate">
+                                                <div className="flex items-center gap-2">
+                                                    {t.image && <ImageIcon size={14} className="text-primary shrink-0" />}
+                                                    <span>{t.note || '-'}</span>
+                                                </div>
+                                            </td>
+                                            <td className={`p-4 text-sm font-bold text-right whitespace-nowrap ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? 'text-green-600' : 'text-red-600'
+                                                }`}>
+                                                {['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <button onClick={() => deleteTransaction(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    {data.transactions.length === 0 && (
+                        <div className="p-20 text-center text-secondary">
+                            No transactions found.
+                        </div>
+                    )}
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                    {data.transactions.map((t: Transaction) => {
+                        const account = data.accounts.find((a: Account) => a.id === t.account);
+                        return (
+                            <div key={t.id} className="card">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type)
-                                                ? 'bg-green-500/10 text-green-600'
-                                                : 'bg-red-500/10 text-red-600'
+                                                    ? 'bg-green-500/10 text-green-600'
+                                                    : 'bg-red-500/10 text-red-600'
                                                 }`}>
                                                 {t.type.replace('_', ' ')}
                                             </span>
-                                        </td>
-                                        <td className="p-4 text-sm max-w-xs truncate">
-                                            <div className="flex items-center gap-2">
-                                                {t.image && <ImageIcon size={14} className="text-primary shrink-0" />}
-                                                <span>{t.note || '-'}</span>
-                                            </div>
-                                        </td>
-                                        <td className={`p-4 text-sm font-bold text-right whitespace-nowrap ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? 'text-green-600' : 'text-red-600'
+                                        </div>
+                                        <p className="text-xs text-secondary">
+                                            {format(new Date(t.date), 'MMM dd, yyyy')}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <p className={`text-lg font-bold whitespace-nowrap ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? 'text-green-600' : 'text-red-600'
                                             }`}>
                                             {['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <button onClick={() => deleteTransaction(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all">
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                        </p>
+                                        <button onClick={() => deleteTransaction(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all shrink-0">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                    <div>
+                                        <span className="text-secondary text-xs">Account: </span>
+                                        <span className="font-medium">{account ? `${account.bank_name} (${account.account_name})` : '-'}</span>
+                                    </div>
+                                    {t.note && (
+                                        <div>
+                                            <span className="text-secondary text-xs">Note: </span>
+                                            <span className="break-words">{t.note}</span>
+                                        </div>
+                                    )}
+                                    {t.image && (
+                                        <div className="flex items-center gap-2 text-primary">
+                                            <ImageIcon size={14} />
+                                            <span className="text-xs">Has attachment</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                     {data.transactions.length === 0 && (
-                        <div className="p-20 text-center text-secondary">
+                        <div className="card p-20 text-center text-secondary">
                             No transactions found.
                         </div>
                     )}

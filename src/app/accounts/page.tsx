@@ -79,23 +79,23 @@ export default function AccountsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                    {accounts.map((acc: any) => (
-                        <div key={acc.id} className="card flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                    {accounts.map((acc: Account) => (
+                        <div key={acc.id} className="card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4 w-full sm:w-auto">
+                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                                     {acc.bank_name[0]}
                                 </div>
-                                <div>
-                                    <h3 className="font-bold">{acc.account_name}</h3>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold truncate">{acc.account_name}</h3>
                                     <p className="text-sm text-secondary">{acc.bank_name}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-8">
-                                <div className="text-right">
+                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
+                                <div className="text-left sm:text-right">
                                     <p className="text-sm text-secondary font-medium">Balance</p>
-                                    <p className="text-xl font-bold">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
+                                    <p className="text-lg sm:text-xl font-bold">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
                                 </div>
-                                <button onClick={() => deleteAccount(acc.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                <button onClick={() => deleteAccount(acc.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors shrink-0">
                                     <Trash2 size={20} />
                                 </button>
                             </div>

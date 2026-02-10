@@ -64,12 +64,12 @@ export default function LoansPage() {
                         <div className="space-y-4">
                             {loans.filter((l: any) => l.type === 'TAKEN' && !l.is_closed).map((loan: any) => (
                                 <div key={loan.id} className="card border-l-4 border-red-500">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-lg">{loan.person_name}</h3>
-                                            <p className="text-sm text-secondary">{loan.description || 'No notes'}</p>
+                                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-lg truncate">{loan.person_name}</h3>
+                                            <p className="text-sm text-secondary break-words">{loan.description || 'No notes'}</p>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-left sm:text-right w-full sm:w-auto">
                                             <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
                                             <p className="text-xl font-bold text-red-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
                                         </div>
@@ -94,12 +94,12 @@ export default function LoansPage() {
                         <div className="space-y-4">
                             {loans.filter((l: any) => l.type === 'LENT' && !l.is_closed).map((loan: any) => (
                                 <div key={loan.id} className="card border-l-4 border-green-500">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-lg">{loan.person_name}</h3>
-                                            <p className="text-sm text-secondary">{loan.description || 'No notes'}</p>
+                                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-lg truncate">{loan.person_name}</h3>
+                                            <p className="text-sm text-secondary break-words">{loan.description || 'No notes'}</p>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-left sm:text-right w-full sm:w-auto">
                                             <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
                                             <p className="text-xl font-bold text-green-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
                                         </div>
