@@ -11,18 +11,33 @@ export default function LoansPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const [loans, setLoans] = useState([]);
+    const [contacts, setContacts] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [form, setForm] = useState({ person_name: '', type: 'TAKEN', total_amount: '', description: '' });
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [form, setForm] = useState({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
+    const [contactForm, setContactForm] = useState({ first_name: '', last_name: '', phone: '' });
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
-        if (user) fetchLoans();
+        if (user) {
+            fetchLoans();
+            fetchContacts();
+        }
     }, [user, loading]);
 
     const fetchLoans = async () => {
         try {
             const res = await api.get('loans/');
             setLoans(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchContacts = async () => {
+        try {
+            const res = await api.get('contacts/');
+            setContacts(res.data);
         } catch (err) {
             console.error(err);
         }
@@ -36,11 +51,29 @@ export default function LoansPage() {
                 remaining_amount: form.total_amount
             });
             setIsModalOpen(false);
-            setForm({ person_name: '', type: 'TAKEN', total_amount: '', description: '' });
+            setForm({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
             fetchLoans();
         } catch (err) {
             console.error(err);
         }
+    };
+
+    const handleContactSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await api.post('contacts/', contactForm);
+            setIsContactModalOpen(false);
+            setContactForm({ first_name: '', last_name: '', phone: '' });
+            setForm({ ...form, contact: res.data.id });
+            fetchContacts();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const getDisplayName = (loan: any) => {
+        if (loan.contact_name) return loan.contact_name;
+        return loan.person_name || 'Unknown';
     };
 
     return (
@@ -66,7 +99,7 @@ export default function LoansPage() {
                                 <div key={loan.id} className="card border-l-4 border-red-500">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold text-lg truncate">{loan.person_name}</h3>
+                                            <h3 className="font-bold text-lg truncate">{getDisplayName(loan)}</h3>
                                             <p className="text-sm text-secondary break-words">{loan.description || 'No notes'}</p>
                                         </div>
                                         <div className="text-left sm:text-right w-full sm:w-auto">
@@ -96,7 +129,7 @@ export default function LoansPage() {
                                 <div key={loan.id} className="card border-l-4 border-green-500">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold text-lg truncate">{loan.person_name}</h3>
+                                            <h3 className="font-bold text-lg truncate">{getDisplayName(loan)}</h3>
                                             <p className="text-sm text-secondary break-words">{loan.description || 'No notes'}</p>
                                         </div>
                                         <div className="text-left sm:text-right w-full sm:w-auto">
@@ -125,7 +158,7 @@ export default function LoansPage() {
                                 <div className="flex items-center gap-3">
                                     <CheckCircle2 className="text-green-500" size={20} />
                                     <div>
-                                        <p className="font-bold text-sm">{loan.person_name}</p>
+                                        <p className="font-bold text-sm">{getDisplayName(loan)}</p>
                                         <p className="text-xs text-secondary">{loan.type === 'TAKEN' ? 'Paid Back' : 'Reimbursed'}</p>
                                     </div>
                                 </div>
@@ -141,8 +174,8 @@ export default function LoansPage() {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-md animate-fade-in">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="card w-full max-w-md animate-fade-in max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2">
                             <h2 className="text-2xl font-bold">Add Loan Record</h2>
                             <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
                         </div>
@@ -163,15 +196,49 @@ export default function LoansPage() {
                                     Money Lent
                                 </button>
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium mb-1">Person Name</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-sm font-medium">Select Contact</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsContactModalOpen(true)}
+                                        className="text-xs text-primary font-bold hover:underline"
+                                    >
+                                        + New Contact
+                                    </button>
+                                </div>
+                                <select
+                                    className="input-field"
+                                    value={form.contact}
+                                    onChange={e => setForm({ ...form, contact: e.target.value })}
+                                    required={!form.person_name}
+                                >
+                                    <option value="">-- Choose Contact --</option>
+                                    {contacts.map((c: any) => (
+                                        <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                    <div className="w-full border-t border-border"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-white dark:bg-slate-900 px-2 text-secondary">Or manual entry</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Person Name (Legacy)</label>
                                 <input
                                     type="text"
                                     className="input-field"
                                     placeholder="Who is involved?"
                                     value={form.person_name}
                                     onChange={e => setForm({ ...form, person_name: e.target.value })}
-                                    required
+                                    required={!form.contact}
                                 />
                             </div>
                             <div>
@@ -195,6 +262,53 @@ export default function LoansPage() {
                                 />
                             </div>
                             <button type="submit" className="btn btn-primary w-full mt-4">Save Record</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Inline Contact Modal */}
+            {isContactModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+                    <div className="card w-full max-w-sm animate-fade-in shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold">Quick Add Contact</h2>
+                            <button onClick={() => setIsContactModalOpen(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleContactSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">First Name</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={contactForm.first_name}
+                                        onChange={e => setContactForm({ ...contactForm, first_name: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Last Name</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={contactForm.last_name}
+                                        onChange={e => setContactForm({ ...contactForm, last_name: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Phone</label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    value={contactForm.phone}
+                                    onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <button type="submit" className="btn btn-primary w-full">Create & Select</button>
                         </form>
                     </div>
                 </div>

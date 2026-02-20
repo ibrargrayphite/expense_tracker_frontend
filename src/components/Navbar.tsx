@@ -30,6 +30,10 @@ export default function Navbar() {
                         <HandCoins size={18} />
                         <span className="font-medium">Loans</span>
                     </Link>
+                    <Link href="/contacts" className="flex items-center gap-2 hover:text-[var(--primary)] transition-colors">
+                        <ReceiptText size={18} />
+                        <span className="font-medium">Contacts</span>
+                    </Link>
                     <Link href="/transactions" className="flex items-center gap-2 hover:text-[var(--primary)] transition-colors">
                         <ReceiptText size={18} />
                         <span className="font-medium">History</span>
@@ -81,6 +85,14 @@ export default function Navbar() {
                             >
                                 <HandCoins size={20} />
                                 <span className="font-medium">Loans</span>
+                            </Link>
+                            <Link
+                                href="/contacts"
+                                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <ReceiptText size={20} />
+                                <span className="font-medium">Contacts</span>
                             </Link>
                             <Link
                                 href="/transactions"

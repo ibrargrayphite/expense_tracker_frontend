@@ -20,6 +20,7 @@ interface Account {
     id: number;
     bank_name: string;
     account_name: string;
+    account_number: string;
     balance: string;
 }
 
@@ -28,7 +29,7 @@ export default function AccountsPage() {
     const router = useRouter();
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [form, setForm] = useState({ bank_name: 'JazzCash', account_name: '', balance: '' });
+    const [form, setForm] = useState({ bank_name: 'JazzCash', account_name: '', account_number: '', balance: '' });
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -49,7 +50,7 @@ export default function AccountsPage() {
         try {
             await api.post('accounts/', form);
             setIsModalOpen(false);
-            setForm({ bank_name: 'JazzCash', account_name: '', balance: '' });
+            setForm({ bank_name: 'JazzCash', account_name: '', account_number: '', balance: '' });
             fetchAccounts();
         } catch (err) {
             console.error(err);
@@ -87,7 +88,7 @@ export default function AccountsPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold truncate">{acc.account_name}</h3>
-                                    <p className="text-sm text-secondary">{acc.bank_name}</p>
+                                    <p className="text-sm text-secondary">{acc.bank_name}{acc.account_number ? ` - ${acc.account_number}` : ''}</p>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
@@ -137,6 +138,16 @@ export default function AccountsPage() {
                                     value={form.account_name}
                                     onChange={e => setForm({ ...form, account_name: e.target.value })}
                                     required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Account Number (Optional)</label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    placeholder="0300..."
+                                    value={form.account_number}
+                                    onChange={e => setForm({ ...form, account_number: e.target.value })}
                                 />
                             </div>
                             <div>
