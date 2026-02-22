@@ -89,7 +89,7 @@ export default function TransactionsPage() {
     const [splits, setSplits] = useState<{ account: string; amount: string }[]>([]);
     const [isSplitEnabled, setIsSplitEnabled] = useState(false);
     const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
-    const [accountForm, setAccountForm] = useState({ bank_name: 'Cash', account_name: '', balance: '0' });
+    const [accountForm, setAccountForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '0' });
     const [image, setImage] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -220,7 +220,7 @@ export default function TransactionsPage() {
         try {
             const res = await api.post('accounts/', accountForm);
             setIsAccountModalOpen(false);
-            setAccountForm({ bank_name: 'Cash', account_name: '', balance: '0' });
+            setAccountForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '0' });
             fetchData();
             setForm(prev => ({ ...prev, account: res.data.id.toString() }));
         } catch (err) {
@@ -730,33 +730,74 @@ export default function TransactionsPage() {
             {/* Inline Account Modal */}
             {isAccountModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-sm animate-fade-in shadow-2xl">
+                    <div className="card w-full max-w-lg animate-fade-in shadow-2xl">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold">Quick Add Account</h2>
                             <button onClick={() => setIsAccountModalOpen(false)}><X size={20} /></button>
                         </div>
                         <form onSubmit={handleAccountSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Bank / Platform</label>
-                                <select
-                                    className="input-field"
-                                    value={accountForm.bank_name}
-                                    onChange={e => setAccountForm({ ...accountForm, bank_name: e.target.value })}
-                                >
-                                    {BANK_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Bank / Platform</label>
+                                    <select
+                                        className="input-field"
+                                        value={accountForm.bank_name}
+                                        onChange={e => setAccountForm({ ...accountForm, bank_name: e.target.value })}
+                                    >
+                                        {BANK_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Account Name</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="Personal, Work etc."
+                                        value={accountForm.account_name}
+                                        onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                        required
+                                    />
+                                </div>
                             </div>
+
+                            {accountForm.bank_name !== 'Cash' && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-scale-in">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Account Number</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="0300..."
+                                            value={accountForm.account_number}
+                                            onChange={e => setAccountForm({ ...accountForm, account_number: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">IBAN (Optional)</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="PK..."
+                                            value={accountForm.iban}
+                                            onChange={e => setAccountForm({ ...accountForm, iban: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
-                                <label className="block text-sm font-medium mb-1">Account Name</label>
+                                <label className="block text-sm font-medium mb-1">Initial Balance (Rs.)</label>
                                 <input
-                                    type="text"
+                                    type="number"
                                     className="input-field"
-                                    placeholder="Personal, Work etc."
-                                    value={accountForm.account_name}
-                                    onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                    placeholder="0.00"
+                                    value={accountForm.balance}
+                                    onChange={e => setAccountForm({ ...accountForm, balance: e.target.value })}
                                     required
                                 />
                             </div>
+
                             <button type="submit" className="btn btn-primary w-full mt-4">Save & Select</button>
                         </form>
                     </div>
