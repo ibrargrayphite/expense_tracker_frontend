@@ -301,7 +301,7 @@ export default function LoansPage() {
                                             <p className="text-sm text-secondary break-words whitespace-pre-wrap mt-1">{loan.description || 'No notes'}</p>
                                         </div>
                                         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                            <div className="text-left sm:text-right">
+                                            <div className="text-left sm:text-left">
                                                 <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
                                                 <p className="text-xl font-bold text-red-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
                                             </div>
@@ -341,7 +341,7 @@ export default function LoansPage() {
                                             <p className="text-sm text-secondary break-words whitespace-pre-wrap mt-1">{loan.description || 'No notes'}</p>
                                         </div>
                                         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                            <div className="text-left sm:text-right">
+                                            <div className="text-left sm:text-left">
                                                 <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
                                                 <p className="text-xl font-bold text-green-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
                                             </div>

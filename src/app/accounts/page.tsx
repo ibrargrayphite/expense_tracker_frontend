@@ -274,7 +274,7 @@ export default function AccountsPage() {
                                 </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
-                                <div className="text-left sm:text-right">
+                                <div className="text-left sm:text-left">
                                     <p className="text-sm text-secondary font-medium">Balance</p>
                                     <p className="text-lg sm:text-xl font-bold">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
                                 </div>
