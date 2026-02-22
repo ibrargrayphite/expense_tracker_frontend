@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { Plus, Trash2, Edit3, X, Phone, User as UserIcon, CreditCard } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface ContactAccount {
     id: number;
@@ -24,6 +26,7 @@ interface Contact {
 export default function ContactsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const { showToast } = useToast();
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -32,6 +35,8 @@ export default function ContactsPage() {
     const [form, setForm] = useState({ first_name: '', last_name: '', phone: '' });
     const [editingAccount, setEditingAccount] = useState<ContactAccount | null>(null);
     const [accountForm, setAccountForm] = useState({ account_name: '', account_number: '' });
+    const [confirmDeleteContact, setConfirmDeleteContact] = useState<number | null>(null);
+    const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -75,14 +80,17 @@ export default function ContactsPage() {
         try {
             if (editingContact) {
                 await api.put(`contacts/${editingContact.id}/`, form);
+                showToast('Contact updated!', 'success');
             } else {
                 await api.post('contacts/', form);
+                showToast('Contact added!', 'success');
             }
             setIsModalOpen(false);
             setEditingContact(null);
             setForm({ first_name: '', last_name: '', phone: '' });
             fetchContacts();
         } catch (err) {
+            showToast('Something went wrong. Please try again.', 'error');
             console.error(err);
         }
     };
@@ -112,24 +120,28 @@ export default function ContactsPage() {
     };
 
     const deleteContact = async (id: number) => {
-        if (confirm('Are you sure? This will delete the contact.')) {
-            try {
-                await api.delete(`contacts/${id}/`);
-                fetchContacts();
-            } catch (err) {
-                console.error(err);
-            }
+        try {
+            await api.delete(`contacts/${id}/`);
+            showToast('Contact deleted.', 'info');
+            fetchContacts();
+        } catch (err) {
+            showToast('Failed to delete contact.', 'error');
+            console.error(err);
+        } finally {
+            setConfirmDeleteContact(null);
         }
     };
 
     const deleteAccount = async (id: number) => {
-        if (confirm('Delete this account for the contact?')) {
-            try {
-                await api.delete(`contact-accounts/${id}/`);
-                fetchContacts();
-            } catch (err) {
-                console.error(err);
-            }
+        try {
+            await api.delete(`contact-accounts/${id}/`);
+            showToast('Account removed from contact.', 'info');
+            fetchContacts();
+        } catch (err) {
+            showToast('Failed to delete account.', 'error');
+            console.error(err);
+        } finally {
+            setConfirmDeleteAccount(null);
         }
     };
 
@@ -163,7 +175,7 @@ export default function ContactsPage() {
                                     <button onClick={() => handleOpenModal(contact)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
                                         <Edit3 size={20} />
                                     </button>
-                                    <button onClick={() => deleteContact(contact.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                    <button onClick={() => setConfirmDeleteContact(contact.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
                                         <Trash2 size={20} />
                                     </button>
                                 </div>
@@ -192,7 +204,7 @@ export default function ContactsPage() {
                                                 <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1.5 text-slate-400 hover:text-primary transition-colors">
                                                     <Edit3 size={14} />
                                                 </button>
-                                                <button onClick={() => deleteAccount(acc.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
+                                                <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
@@ -303,6 +315,22 @@ export default function ContactsPage() {
                     </div>
                 </div>
             )}
+            <ConfirmModal
+                isOpen={confirmDeleteContact !== null}
+                title="Delete Contact"
+                message="Are you sure? This will permanently delete this contact and all their associated accounts."
+                confirmText="Yes, Delete"
+                onConfirm={() => confirmDeleteContact !== null && deleteContact(confirmDeleteContact)}
+                onCancel={() => setConfirmDeleteContact(null)}
+            />
+            <ConfirmModal
+                isOpen={confirmDeleteAccount !== null}
+                title="Remove Account"
+                message="Are you sure you want to remove this account from the contact?"
+                confirmText="Yes, Remove"
+                onConfirm={() => confirmDeleteAccount !== null && deleteAccount(confirmDeleteAccount)}
+                onCancel={() => setConfirmDeleteAccount(null)}
+            />
         </div>
     );
 }

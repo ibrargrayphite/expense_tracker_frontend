@@ -7,6 +7,8 @@ import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { Plus, X, Search, Filter, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const TX_TYPES = [
     { value: 'EXPENSE', label: 'Expense' },
@@ -54,6 +56,7 @@ interface Transaction {
 export default function TransactionsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const { showToast } = useToast();
     const [data, setData] = useState<{
         transactions: Transaction[];
         accounts: Account[];
@@ -71,13 +74,26 @@ export default function TransactionsPage() {
         type: 'EXPENSE',
         note: '',
     });
+    const [splits, setSplits] = useState<{ account: string; amount: string }[]>([]);
+    const [isSplitEnabled, setIsSplitEnabled] = useState(false);
+    const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
     const [accountForm, setAccountForm] = useState({ bank_name: 'JazzCash', account_name: '', balance: '0' });
     const [image, setImage] = useState<File | null>(null);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchData();
     }, [user, loading]);
+
+    // Update total amount when splits change
+    useEffect(() => {
+        if (isSplitEnabled) {
+            const total = splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0);
+            setForm(prev => ({ ...prev, amount: total.toString() }));
+        }
+    }, [splits, isSplitEnabled]);
 
     const fetchData = async () => {
         try {
@@ -101,14 +117,70 @@ export default function TransactionsPage() {
         }
     };
 
+    const addSplit = () => {
+        setSplits([...splits, { account: '', amount: '' }]);
+    };
+
+    const removeSplit = (index: number) => {
+        if (splits.length <= 2) return;
+        setSplits(splits.filter((_, i) => i !== index));
+    };
+
+    const handleSplitChange = (index: number, field: string, value: string) => {
+        const newSplits = [...splits];
+        newSplits[index] = { ...newSplits[index], [field]: value };
+        setSplits(newSplits);
+    };
+
+    const getBalanceError = () => {
+        if (!['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type)) return null;
+
+        if (isSplitEnabled) {
+            for (const split of splits) {
+                if (!split.account || !split.amount) continue;
+                const account = data.accounts.find(a => a.id === parseInt(split.account));
+                if (account && parseFloat(split.amount) > parseFloat(account.balance)) {
+                    return `Split amount for ${account.bank_name} exceeds balance (Rs. ${parseFloat(account.balance).toLocaleString()})`;
+                }
+            }
+        } else if (form.account && form.amount) {
+            const account = data.accounts.find(a => a.id === parseInt(form.account));
+            if (account && parseFloat(form.amount) > parseFloat(account.balance)) {
+                return `Amount exceeds balance in ${account.bank_name} (Rs. ${parseFloat(account.balance).toLocaleString()})`;
+            }
+        }
+        return null;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const balanceError = getBalanceError();
+        if (balanceError) {
+            showToast(balanceError, 'error');
+            return;
+        }
+
+        // Validation: Sum of splits must equal total amount
+        if (isSplitEnabled) {
+            const totalSplits = splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0);
+            if (Math.abs(totalSplits - parseFloat(form.amount)) > 0.01) {
+                showToast(`Split total (Rs. ${totalSplits.toLocaleString()}) must equal transaction total (Rs. ${parseFloat(form.amount).toLocaleString()})`, 'error');
+                return;
+            }
+        }
+
         const formData = new FormData();
         Object.keys(form).forEach(key => {
             if (form[key as keyof typeof form]) {
                 formData.append(key, form[key as keyof typeof form]);
             }
         });
+
+        if (isSplitEnabled) {
+            formData.append('splits', JSON.stringify(splits));
+        }
+
         if (image) {
             formData.append('image', image);
         }
@@ -118,11 +190,15 @@ export default function TransactionsPage() {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setIsModalOpen(false);
+            setIsSplitEnabled(false);
+            setSplits([]);
             setImage(null);
             setSelectedContactId('');
-            setForm({ ...form, amount: '', note: '', loan: '' });
+            setForm({ ...form, amount: '', note: '', loan: '', contact: '' });
             fetchData();
+            showToast('Transaction recorded successfully!', 'success');
         } catch (err) {
+            showToast('Failed to record transaction. Please try again.', 'error');
             console.error(err);
         }
     };
@@ -141,13 +217,15 @@ export default function TransactionsPage() {
     };
 
     const deleteTransaction = async (id: number) => {
-        if (confirm('Delete this transaction? The account balance will be reversed.')) {
-            try {
-                await api.delete(`transactions/${id}/`);
-                fetchData();
-            } catch (err) {
-                console.error(err);
-            }
+        try {
+            await api.delete(`transactions/${id}/`);
+            showToast('Transaction deleted and balance reversed.', 'info');
+            fetchData();
+        } catch (err) {
+            showToast('Failed to delete transaction.', 'error');
+            console.error(err);
+        } finally {
+            setConfirmDeleteId(null);
         }
     };
 
@@ -204,7 +282,15 @@ export default function TransactionsPage() {
                                             </td>
                                             <td className="p-4 text-sm max-w-xs truncate">
                                                 <div className="flex items-center gap-2">
-                                                    {t.image && <ImageIcon size={14} className="text-primary shrink-0" />}
+                                                    {t.image && (
+                                                        <button
+                                                            onClick={() => setPreviewImage(t.image)}
+                                                            className="p-1 hover:bg-primary/10 rounded transition-colors text-primary"
+                                                            title="View Attachment"
+                                                        >
+                                                            <ImageIcon size={14} className="shrink-0" />
+                                                        </button>
+                                                    )}
                                                     <span className="whitespace-pre-wrap">{t.note || '-'}</span>
                                                 </div>
                                             </td>
@@ -213,7 +299,7 @@ export default function TransactionsPage() {
                                                 {['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
                                             </td>
                                             <td className="p-4 text-right">
-                                                <button onClick={() => deleteTransaction(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all">
+                                                <button onClick={() => setConfirmDeleteId(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all">
                                                     <Trash2 size={16} />
                                                 </button>
                                             </td>
@@ -255,7 +341,7 @@ export default function TransactionsPage() {
                                             }`}>
                                             {['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
                                         </p>
-                                        <button onClick={() => deleteTransaction(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all shrink-0">
+                                        <button onClick={() => setConfirmDeleteId(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all shrink-0">
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
@@ -272,10 +358,13 @@ export default function TransactionsPage() {
                                         </div>
                                     )}
                                     {t.image && (
-                                        <div className="flex items-center gap-2 text-primary">
+                                        <button
+                                            onClick={() => setPreviewImage(t.image)}
+                                            className="flex items-center gap-2 text-primary p-1 hover:bg-primary/5 rounded -ml-1 transition-colors"
+                                        >
                                             <ImageIcon size={14} />
-                                            <span className="text-xs">Has attachment</span>
-                                        </div>
+                                            <span className="text-xs font-medium underline uppercase tracking-wider">View Attachment</span>
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -301,7 +390,7 @@ export default function TransactionsPage() {
                             }}><X size={24} /></button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Transaction Type</label>
                                     <select
@@ -312,6 +401,28 @@ export default function TransactionsPage() {
                                         {TX_TYPES.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                     </select>
                                 </div>
+                                <div className="flex flex-col justify-end">
+                                    <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={isSplitEnabled}
+                                            onChange={(e) => {
+                                                setIsSplitEnabled(e.target.checked);
+                                                if (e.target.checked) {
+                                                    if (splits.length === 0) {
+                                                        setSplits([{ account: form.account, amount: form.amount || '' }, { account: '', amount: '' }]);
+                                                    }
+                                                    setIsSplitModalOpen(true);
+                                                }
+                                            }}
+                                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-sm font-medium">Split across accounts?</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {!isSplitEnabled ? (
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
                                         <label className="block text-sm font-medium">Account</label>
@@ -334,7 +445,21 @@ export default function TransactionsPage() {
                                         ))}
                                     </select>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-primary uppercase">Split Mode Active</span>
+                                        <span className="text-[10px] text-secondary">{splits.length} accounts selected</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsSplitModalOpen(true)}
+                                        className="btn btn-primary py-2 px-4 text-xs"
+                                    >
+                                        Configure Split
+                                    </button>
+                                </div>
+                            )}
 
                             {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -386,12 +511,18 @@ export default function TransactionsPage() {
                                 <label className="block text-sm font-medium mb-1">Amount (Rs.)</label>
                                 <input
                                     type="number"
-                                    className="input-field"
+                                    className={`input-field ${isSplitEnabled ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-75' : ''}`}
                                     placeholder="0.00"
                                     value={form.amount}
                                     onChange={e => setForm({ ...form, amount: e.target.value })}
                                     required
+                                    readOnly={isSplitEnabled}
                                 />
+                                {isSplitEnabled && (
+                                    <p className="text-[10px] text-primary mt-1 italic font-medium">
+                                        * Calculated from split details. To change, click "Configure Split".
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -413,6 +544,11 @@ export default function TransactionsPage() {
                                     className="text-sm block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                                     onChange={e => setImage(e.target.files ? e.target.files[0] : null)}
                                 />
+                                {getBalanceError() && (
+                                    <p className="text-[10px] text-red-500 mt-1 font-bold animate-pulse">
+                                        ⚠ {getBalanceError()}
+                                    </p>
+                                )}
                             </div>
 
                             <button type="submit" className="btn btn-primary w-full mt-4">Record Transaction</button>
@@ -453,6 +589,125 @@ export default function TransactionsPage() {
                             </div>
                             <button type="submit" className="btn btn-primary w-full mt-4">Save & Select</button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Inline Split Modal */}
+            {isSplitModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+                    <div className="card w-full max-w-md animate-fade-in shadow-2xl border-t-4 border-primary">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold">Configure Splits</h2>
+                                <p className="text-xs text-secondary mt-1">Allocate amounts to different platforms</p>
+                            </div>
+                            <button onClick={() => setIsSplitModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                            {splits.map((split, index) => (
+                                <div key={index} className="flex gap-2 items-start group">
+                                    <div className="flex-1 space-y-1">
+                                        <label className="text-[10px] font-bold text-secondary uppercase px-1">Account {index + 1}</label>
+                                        <select
+                                            className="input-field"
+                                            value={split.account}
+                                            onChange={e => handleSplitChange(index, 'account', e.target.value)}
+                                            required
+                                        >
+                                            <option value="">-- Choose Account --</option>
+                                            {data.accounts.map((acc: any) => (
+                                                <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="w-32 space-y-1">
+                                        <label className="text-[10px] font-bold text-secondary uppercase px-1">Amount</label>
+                                        <input
+                                            type="number"
+                                            className={`input-field ${['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
+                                                split.account &&
+                                                parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0')
+                                                ? 'ring-2 ring-red-500 border-red-500 bg-red-50 dark:bg-red-900/10' : ''
+                                                }`}
+                                            placeholder="0.00"
+                                            value={split.amount}
+                                            onChange={e => handleSplitChange(index, 'amount', e.target.value)}
+                                            required
+                                        />
+                                        {['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
+                                            split.account &&
+                                            parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0') && (
+                                                <p className="text-[9px] text-red-500 font-bold leading-tight">Exceeds Balance!</p>
+                                            )}
+                                    </div>
+                                    <div className="pt-6">
+                                        <button
+                                            type="button"
+                                            onClick={() => removeSplit(index)}
+                                            disabled={splits.length <= 2}
+                                            className={`p-2 rounded-lg transition-all ${splits.length <= 2 ? 'opacity-0' : 'text-slate-400 hover:text-red-500 hover:bg-red-500/5'}`}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={addSplit}
+                            className="w-full py-3 mt-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all mb-6"
+                        >
+                            + Add Another Account
+                        </button>
+
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl space-y-2">
+                            <div className="flex justify-between text-sm font-medium">
+                                <span className="text-secondary">Summary (Sum of Splits)</span>
+                                <span className="font-bold">Rs. {splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsSplitModalOpen(false)}
+                            className="btn btn-primary w-full mt-6 py-4 shadow-lg shadow-primary/20"
+                        >
+                            Done & Update Total
+                        </button>
+                    </div>
+                </div>
+            )}
+            <ConfirmModal
+                isOpen={confirmDeleteId !== null}
+                title="Delete Transaction"
+                message="Are you sure? This will permanently delete the transaction and reverse its effect on the account balance."
+                confirmText="Yes, Delete"
+                onConfirm={() => confirmDeleteId !== null && deleteTransaction(confirmDeleteId)}
+                onCancel={() => setConfirmDeleteId(null)}
+            />
+
+            {/* Image Preview Modal */}
+            {previewImage && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+                    <div className="relative max-w-4xl w-full animate-fade-in group">
+                        <button
+                            onClick={() => setPreviewImage(null)}
+                            className="absolute -top-12 right-0 text-white hover:text-primary transition-colors flex items-center gap-2 font-bold uppercase tracking-widest text-xs"
+                        >
+                            Close <X size={20} />
+                        </button>
+                        <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-2xl overflow-hidden ring-4 ring-white/10">
+                            <img
+                                src={previewImage}
+                                alt="Transaction Attachment"
+                                className="w-full h-auto max-h-[80vh] object-contain rounded-xl"
+                            />
+                        </div>
                     </div>
                 </div>
             )}

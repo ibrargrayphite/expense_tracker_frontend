@@ -6,10 +6,13 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { Plus, X, ArrowUpRight, ArrowDownRight, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function LoansPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const { showToast } = useToast();
     const [loans, setLoans] = useState([]);
     const [contacts, setContacts] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,6 +20,7 @@ export default function LoansPage() {
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [form, setForm] = useState({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
     const [contactForm, setContactForm] = useState({ first_name: '', last_name: '', phone: '' });
+    const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -67,19 +71,22 @@ export default function LoansPage() {
             if (editingLoan) {
                 await api.put(`loans/${editingLoan.id}/`, {
                     ...form,
-                    remaining_amount: form.total_amount // Reset remaining for now if amount changed, or we could handle it better
+                    remaining_amount: form.total_amount
                 });
+                showToast('Loan record updated successfully!', 'success');
             } else {
                 await api.post('loans/', {
                     ...form,
                     remaining_amount: form.total_amount
                 });
+                showToast('Loan record created!', 'success');
             }
             setIsModalOpen(false);
             setEditingLoan(null);
             setForm({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
             fetchLoans();
         } catch (err) {
+            showToast('Something went wrong. Please try again.', 'error');
             console.error(err);
         }
     };
@@ -98,13 +105,15 @@ export default function LoansPage() {
     };
 
     const deleteLoan = async (id: number) => {
-        if (confirm('Are you sure? This will delete the loan record.')) {
-            try {
-                await api.delete(`loans/${id}/`);
-                fetchLoans();
-            } catch (err) {
-                console.error(err);
-            }
+        try {
+            await api.delete(`loans/${id}/`);
+            showToast('Loan record deleted.', 'info');
+            fetchLoans();
+        } catch (err) {
+            showToast('Failed to delete loan record.', 'error');
+            console.error(err);
+        } finally {
+            setConfirmDelete(null);
         }
     };
 
@@ -148,7 +157,7 @@ export default function LoansPage() {
                                                 <button onClick={() => handleOpenModal(loan)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
                                                     <Edit3 size={20} />
                                                 </button>
-                                                <button onClick={() => deleteLoan(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                                <button onClick={() => setConfirmDelete(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
                                                     <Trash2 size={20} />
                                                 </button>
                                             </div>
@@ -223,7 +232,7 @@ export default function LoansPage() {
                                     <p className="font-bold text-sm">Rs. {parseFloat(loan.total_amount).toLocaleString()}</p>
                                 </div>
                                 <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
-                                    <button onClick={() => deleteLoan(loan.id)} className="p-1 text-red-500 hover:bg-red-500/10 rounded transition-colors">
+                                    <button onClick={() => setConfirmDelete(loan.id)} className="p-1 text-red-500 hover:bg-red-500/10 rounded transition-colors">
                                         <Trash2 size={14} />
                                     </button>
                                 </div>
@@ -357,6 +366,14 @@ export default function LoansPage() {
                     </div>
                 </div>
             )}
+            <ConfirmModal
+                isOpen={confirmDelete !== null}
+                title="Delete Loan Record"
+                message="Are you sure? This will permanently delete the loan record. This action cannot be undone."
+                confirmText="Yes, Delete"
+                onConfirm={() => confirmDelete !== null && deleteLoan(confirmDelete)}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }

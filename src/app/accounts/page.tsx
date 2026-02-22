@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { Plus, Trash2, Edit3, X } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const BANK_OPTIONS = [
     'Cash',
@@ -29,10 +31,12 @@ interface Account {
 export default function AccountsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const { showToast } = useToast();
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
     const [form, setForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '' });
+    const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -77,26 +81,31 @@ export default function AccountsPage() {
 
             if (editingAccount) {
                 await api.put(`accounts/${editingAccount.id}/`, payload);
+                showToast('Account updated successfully!', 'success');
             } else {
                 await api.post('accounts/', payload);
+                showToast('Account created successfully!', 'success');
             }
             setIsModalOpen(false);
             setEditingAccount(null);
             setForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '' });
             fetchAccounts();
         } catch (err) {
+            showToast('Something went wrong. Please try again.', 'error');
             console.error(err);
         }
     };
 
     const deleteAccount = async (id: number) => {
-        if (confirm('Are you sure? This will delete the account and its records.')) {
-            try {
-                await api.delete(`accounts/${id}/`);
-                fetchAccounts();
-            } catch (err) {
-                console.error(err);
-            }
+        try {
+            await api.delete(`accounts/${id}/`);
+            showToast('Account deleted.', 'info');
+            fetchAccounts();
+        } catch (err) {
+            showToast('Failed to delete account.', 'error');
+            console.error(err);
+        } finally {
+            setConfirmDelete(null);
         }
     };
 
@@ -138,7 +147,7 @@ export default function AccountsPage() {
                                     <button onClick={() => handleOpenModal(acc)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
                                         <Edit3 size={20} />
                                     </button>
-                                    <button onClick={() => deleteAccount(acc.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                    <button onClick={() => setConfirmDelete(acc.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
                                         <Trash2 size={20} />
                                     </button>
                                 </div>
@@ -227,6 +236,14 @@ export default function AccountsPage() {
                     </div>
                 </div>
             )}
+            <ConfirmModal
+                isOpen={confirmDelete !== null}
+                title="Delete Account"
+                message="Are you sure? This will permanently delete the account and all associated records. This action cannot be undone."
+                confirmText="Yes, Delete"
+                onConfirm={() => confirmDelete !== null && deleteAccount(confirmDelete)}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }
