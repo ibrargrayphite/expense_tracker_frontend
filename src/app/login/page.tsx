@@ -20,6 +20,7 @@ export default function AuthPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [error, setError] = useState('');
+    const [suggestion, setSuggestion] = useState('');
     const [loading, setLoading] = useState(false);
     const { user, loading: authLoading, login } = useAuth();
     const router = useRouter();
@@ -34,6 +35,7 @@ export default function AuthPage() {
     const switchMode = (m: Mode) => {
         setMode(m);
         setError('');
+        setSuggestion('');
         setUsername('');
         setFirstName('');
         setLastName('');
@@ -45,6 +47,7 @@ export default function AuthPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setSuggestion('');
 
         if (mode === 'register' && password !== confirmPassword) {
             setError('Passwords do not match.');
@@ -70,6 +73,9 @@ export default function AuthPage() {
         } catch (err: any) {
             const data = err.response?.data;
             if (data && typeof data === 'object') {
+                if (data.suggestion) {
+                    setSuggestion(data.suggestion);
+                }
                 const first = Object.values(data)[0];
                 setError(Array.isArray(first) ? first[0] as string : String(first));
             } else if (err.message) {
@@ -420,7 +426,20 @@ export default function AuthPage() {
                     {error && (
                         <div className="auth-error">
                             <span>⚠</span>
-                            <span>{error}</span>
+                            <div style={{ flex: 1 }}>
+                                <div>{error}</div>
+                                {suggestion && (
+                                    <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)' }}>
+                                        How about <button
+                                            type="button"
+                                            onClick={() => { setUsername(suggestion); setSuggestion(''); setError(''); }}
+                                            style={{ color: '#a78bfa', fontWeight: 600, border: 'none', background: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                                        >
+                                            {suggestion}
+                                        </button>?
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
