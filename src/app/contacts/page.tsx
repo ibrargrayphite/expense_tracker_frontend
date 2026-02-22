@@ -9,6 +9,17 @@ import { Plus, Trash2, Edit3, X, Phone, User as UserIcon, CreditCard, Search, Fi
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
+const BANK_OPTIONS = [
+    'Cash',
+    'JazzCash',
+    'EasyPaisa',
+    'Nayapay',
+    'SadaPay',
+    'Bank Alfalah',
+    'Meezan Bank',
+    'HBL',
+];
+
 interface ContactAccount {
     id: number;
     account_name: string;
@@ -58,7 +69,7 @@ export default function ContactsPage() {
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [form, setForm] = useState({ first_name: '', last_name: '', phone: '' });
     const [editingAccount, setEditingAccount] = useState<ContactAccount | null>(null);
-    const [accountForm, setAccountForm] = useState({ account_name: '', account_number: '' });
+    const [accountForm, setAccountForm] = useState({ account_name: 'Cash', account_number: '' });
     const [confirmDeleteContact, setConfirmDeleteContact] = useState<number | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
     const [expandedContacts, setExpandedContacts] = useState<Record<number, boolean>>({});
@@ -105,7 +116,7 @@ export default function ContactsPage() {
             setAccountForm({ account_name: account.account_name, account_number: account.account_number });
         } else {
             setEditingAccount(null);
-            setAccountForm({ account_name: '', account_number: '' });
+            setAccountForm({ account_name: 'Cash', account_number: '' });
         }
         setIsAccountModalOpen(true);
     };
@@ -147,7 +158,7 @@ export default function ContactsPage() {
             }
             setIsAccountModalOpen(false);
             setEditingAccount(null);
-            setAccountForm({ account_name: '', account_number: '' });
+            setAccountForm({ account_name: 'Cash', account_number: '' });
             fetchContacts();
         } catch (err) {
             console.error(err);
@@ -526,14 +537,16 @@ export default function ContactsPage() {
                             <form onSubmit={handleAddAccount} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Bank / Platform Name</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         className="input-field"
-                                        placeholder="e.g. JazzCash, Meezan Bank"
                                         value={accountForm.account_name}
                                         onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
                                         required
-                                    />
+                                    >
+                                        {BANK_OPTIONS.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Account Number / IBAN</label>

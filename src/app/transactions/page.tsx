@@ -89,7 +89,7 @@ export default function TransactionsPage() {
     const [splits, setSplits] = useState<{ account: string; amount: string }[]>([]);
     const [isSplitEnabled, setIsSplitEnabled] = useState(false);
     const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
-    const [accountForm, setAccountForm] = useState({ bank_name: 'JazzCash', account_name: '', balance: '0' });
+    const [accountForm, setAccountForm] = useState({ bank_name: 'Cash', account_name: '', balance: '0' });
     const [image, setImage] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -220,7 +220,7 @@ export default function TransactionsPage() {
         try {
             const res = await api.post('accounts/', accountForm);
             setIsAccountModalOpen(false);
-            setAccountForm({ bank_name: 'JazzCash', account_name: '', balance: '0' });
+            setAccountForm({ bank_name: 'Cash', account_name: '', balance: '0' });
             fetchData();
             setForm(prev => ({ ...prev, account: res.data.id.toString() }));
         } catch (err) {
@@ -246,7 +246,7 @@ export default function TransactionsPage() {
         return loan.person_name || 'Unknown';
     };
 
-    const BANK_OPTIONS = ['JazzCash', 'EasyPaisa', 'Nayapay', 'SadaPay', 'Bank Alfalah', 'Meezan Bank'];
+    const BANK_OPTIONS = ['Cash', 'JazzCash', 'EasyPaisa', 'Nayapay', 'SadaPay', 'Bank Alfalah', 'Meezan Bank', 'HBL'];
 
     const filteredTransactions = data.transactions
         .filter(t => {
