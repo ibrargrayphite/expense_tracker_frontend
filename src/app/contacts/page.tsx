@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, Trash2, Edit3, X, Phone, User as UserIcon, CreditCard } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Phone, User as UserIcon, CreditCard, Search, Filter } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -37,6 +37,12 @@ export default function ContactsPage() {
     const [accountForm, setAccountForm] = useState({ account_name: '', account_number: '' });
     const [confirmDeleteContact, setConfirmDeleteContact] = useState<number | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
+
+    // Filter & sort
+    const [search, setSearch] = useState('');
+    const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'accounts_asc' | 'accounts_desc'>('name_asc');
+    const [filterAccountCount, setFilterAccountCount] = useState<'ALL' | 'HAS_ACCOUNTS' | 'NO_ACCOUNTS'>('ALL');
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -145,10 +151,28 @@ export default function ContactsPage() {
         }
     };
 
+    const filteredContacts = contacts
+        .filter(c => {
+            const name = `${c.first_name} ${c.last_name}`.toLowerCase();
+            const matchesSearch = !search || name.includes(search.toLowerCase()) || c.phone.includes(search);
+            const matchesAccountCount = filterAccountCount === 'ALL' ||
+                (filterAccountCount === 'HAS_ACCOUNTS' && c.accounts.length > 0) ||
+                (filterAccountCount === 'NO_ACCOUNTS' && c.accounts.length === 0);
+            return matchesSearch && matchesAccountCount;
+        })
+        .sort((a, b) => {
+            const nameA = `${a.first_name} ${a.last_name}`;
+            const nameB = `${b.first_name} ${b.last_name}`;
+            if (sortBy === 'name_asc') return nameA.localeCompare(nameB);
+            if (sortBy === 'name_desc') return nameB.localeCompare(nameA);
+            if (sortBy === 'accounts_asc') return a.accounts.length - b.accounts.length;
+            if (sortBy === 'accounts_desc') return b.accounts.length - a.accounts.length;
+            return 0;
+        });
     return (
         <div className="min-h-screen">
             <Navbar />
-            <main className="max-w-4xl mx-auto px-4 mt-8 space-y-8 animate-fade-in">
+            <main className="max-w-6xl mx-auto px-4 mt-8 space-y-6 animate-fade-in">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Contacts</h1>
                     <button onClick={() => handleOpenModal()} className="btn btn-primary">
@@ -156,8 +180,91 @@ export default function ContactsPage() {
                     </button>
                 </div>
 
+                {/* Modern Filter & Sort Bar */}
+                <div className="card overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md mb-6 transition-all duration-300">
+                    <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="flex items-center gap-2 text-primary">
+                            <Filter size={18} />
+                            <h3 className="font-bold text-slate-800 dark:text-slate-100">Find Contacts</h3>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {(search || filterAccountCount !== 'ALL' || sortBy !== 'name_asc') && (
+                                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+                                    Filters Active
+                                </span>
+                            )}
+                            <button
+                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                className={`btn btn-sm px-4 rounded-full transition-all duration-200 ${showAdvancedFilters
+                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    : 'btn-primary shadow-lg shadow-primary/20'
+                                    }`}
+                            >
+                                {showAdvancedFilters ? 'Hide Panel' : 'Search Options'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className={`transition-all duration-300 ease-in-out ${showAdvancedFilters ? 'max-h-[1000px] opacity-100 p-6' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Search</label>
+                                <div className="relative group">
+                                    {/* <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" /> */}
+                                    <input
+                                        type="text"
+                                        className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Name or phone…"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Sort Order</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value as any)}
+                                >
+                                    <option value="name_asc">🔤 Name A→Z</option>
+                                    <option value="name_desc">🔤 Name Z→A</option>
+                                    <option value="accounts_asc">📇 Accounts (Low→High)</option>
+                                    <option value="accounts_desc">📇 Accounts (High→Low)</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Account Visibility</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={filterAccountCount}
+                                    onChange={e => setFilterAccountCount(e.target.value as any)}
+                                >
+                                    <option value="ALL">All Contacts</option>
+                                    <option value="HAS_ACCOUNTS">Has Linked Accounts</option>
+                                    <option value="NO_ACCOUNTS">No Linked Accounts</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <span>Found {filteredContacts.length} contacts matching criteria</span>
+                            {(search || filterAccountCount !== 'ALL' || sortBy !== 'name_asc') && (
+                                <button
+                                    onClick={() => { setSearch(''); setFilterAccountCount('ALL'); setSortBy('name_asc'); }}
+                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                >
+                                    Reset Filters
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 gap-6">
-                    {contacts.map((contact: Contact) => (
+                    {filteredContacts.map((contact: Contact) => (
                         <div key={contact.id} className="card p-6 flex flex-col gap-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
@@ -226,95 +333,99 @@ export default function ContactsPage() {
             </main>
 
             {/* Contact Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-md animate-fade-in">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Contact'}</h2>
-                            <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+            {
+                isModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <div className="card w-full max-w-md animate-fade-in">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Contact'}</h2>
+                                <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">First Name</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            value={form.first_name}
+                                            onChange={e => setForm({ ...form, first_name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Last Name</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            value={form.last_name}
+                                            onChange={e => setForm({ ...form, last_name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Phone Number</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="+92..."
+                                        value={form.phone}
+                                        onChange={e => setForm({ ...form, phone: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <button type="submit" className="btn btn-primary w-full mt-4">
+                                    {editingContact ? 'Update Contact' : 'Save Contact'}
+                                </button>
+                            </form>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">First Name</label>
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        value={form.first_name}
-                                        onChange={e => setForm({ ...form, first_name: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Last Name</label>
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        value={form.last_name}
-                                        onChange={e => setForm({ ...form, last_name: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Phone Number</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    placeholder="+92..."
-                                    value={form.phone}
-                                    onChange={e => setForm({ ...form, phone: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <button type="submit" className="btn btn-primary w-full mt-4">
-                                {editingContact ? 'Update Contact' : 'Save Contact'}
-                            </button>
-                        </form>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Account Modal */}
-            {isAccountModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-md animate-fade-in">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">
-                                {editingAccount ? `Edit Account for ${selectedContact?.first_name} ${selectedContact?.last_name}` : `Add Account for ${selectedContact?.first_name} ${selectedContact?.last_name}`}
-                            </h2>
-                            <button onClick={() => setIsAccountModalOpen(false)}><X size={24} /></button>
+            {
+                isAccountModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <div className="card w-full max-w-md animate-fade-in">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold">
+                                    {editingAccount ? `Edit Account for ${selectedContact?.first_name} ${selectedContact?.last_name}` : `Add Account for ${selectedContact?.first_name} ${selectedContact?.last_name}`}
+                                </h2>
+                                <button onClick={() => setIsAccountModalOpen(false)}><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleAddAccount} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Bank / Platform Name</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="e.g. JazzCash, Meezan Bank"
+                                        value={accountForm.account_name}
+                                        onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Account Number / IBAN</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="0300..."
+                                        value={accountForm.account_number}
+                                        onChange={e => setAccountForm({ ...accountForm, account_number: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <button type="submit" className="btn btn-primary w-full mt-4">
+                                    {editingAccount ? 'Update Account' : 'Add Account'}
+                                </button>
+                            </form>
                         </div>
-                        <form onSubmit={handleAddAccount} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Bank / Platform Name</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    placeholder="e.g. JazzCash, Meezan Bank"
-                                    value={accountForm.account_name}
-                                    onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Account Number / IBAN</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    placeholder="0300..."
-                                    value={accountForm.account_number}
-                                    onChange={e => setAccountForm({ ...accountForm, account_number: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <button type="submit" className="btn btn-primary w-full mt-4">
-                                {editingAccount ? 'Update Account' : 'Add Account'}
-                            </button>
-                        </form>
                     </div>
-                </div>
-            )}
+                )
+            }
             <ConfirmModal
                 isOpen={confirmDeleteContact !== null}
                 title="Delete Contact"
@@ -331,6 +442,6 @@ export default function ContactsPage() {
                 onConfirm={() => confirmDeleteAccount !== null && deleteAccount(confirmDeleteAccount)}
                 onCancel={() => setConfirmDeleteAccount(null)}
             />
-        </div>
+        </div >
     );
 }

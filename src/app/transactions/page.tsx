@@ -64,6 +64,18 @@ export default function TransactionsPage() {
         contacts: Contact[];
     }>({ transactions: [], accounts: [], loans: [], contacts: [] });
     const [selectedContactId, setSelectedContactId] = useState<string>('');
+
+    // Filter & sort state
+    const [search, setSearch] = useState('');
+    const [filterType, setFilterType] = useState('');
+    const [filterAccount, setFilterAccount] = useState('');
+    const [filterDateFrom, setFilterDateFrom] = useState('');
+    const [filterDateTo, setFilterDateTo] = useState('');
+    const [filterAmountMin, setFilterAmountMin] = useState('');
+    const [filterAmountMax, setFilterAmountMax] = useState('');
+    const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+    const [showFilters, setShowFilters] = useState(false);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
     const [form, setForm] = useState({
@@ -236,6 +248,28 @@ export default function TransactionsPage() {
 
     const BANK_OPTIONS = ['JazzCash', 'EasyPaisa', 'Nayapay', 'SadaPay', 'Bank Alfalah', 'Meezan Bank'];
 
+    const filteredTransactions = data.transactions
+        .filter(t => {
+            const matchesSearch = !search || t.note?.toLowerCase().includes(search.toLowerCase());
+            const matchesType = !filterType || t.type === filterType;
+            const matchesAccount = !filterAccount || t.account === parseInt(filterAccount);
+            const matchesFrom = !filterDateFrom || new Date(t.date) >= new Date(filterDateFrom);
+            const matchesTo = !filterDateTo || new Date(t.date) <= new Date(filterDateTo + 'T23:59:59');
+            const amount = parseFloat(t.amount);
+            const matchesMinAmount = !filterAmountMin || amount >= parseFloat(filterAmountMin);
+            const matchesMaxAmount = !filterAmountMax || amount <= parseFloat(filterAmountMax);
+            return matchesSearch && matchesType && matchesAccount && matchesFrom && matchesTo && matchesMinAmount && matchesMaxAmount;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'date_desc') return new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (sortBy === 'date_asc') return new Date(a.date).getTime() - new Date(b.date).getTime();
+            if (sortBy === 'amount_desc') return parseFloat(b.amount) - parseFloat(a.amount);
+            if (sortBy === 'amount_asc') return parseFloat(a.amount) - parseFloat(b.amount);
+            return 0;
+        });
+
+    const activeFilterCount = [search, filterType, filterAccount, filterDateFrom, filterDateTo, filterAmountMin, filterAmountMax].filter(Boolean).length;
+
     return (
         <div className="min-h-screen">
             <Navbar />
@@ -245,6 +279,142 @@ export default function TransactionsPage() {
                     <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
                         <Plus size={20} /> Add Transaction
                     </button>
+                </div>
+
+                {/* Modern Filter & Sort Bar */}
+                <div className="card overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md mb-6 transition-all duration-300">
+                    <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="flex items-center gap-2 text-primary">
+                            <Filter size={18} />
+                            <h3 className="font-bold text-slate-800 dark:text-slate-100">Find Transactions</h3>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {activeFilterCount > 0 && (
+                                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+                                    {activeFilterCount} Active
+                                </span>
+                            )}
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`btn btn-sm px-4 rounded-full transition-all duration-200 ${showFilters
+                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    : 'btn-primary shadow-lg shadow-primary/20'
+                                    }`}
+                            >
+                                {showFilters ? 'Hide Panel' : 'Apply Filters'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'max-h-[1000px] opacity-100 p-6' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Search & Sort Row */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Search</label>
+                                <div className="relative group">
+                                    {/* <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" /> */}
+                                    <input
+                                        type="text"
+                                        className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Search by note…"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Sort Order</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value as any)}
+                                >
+                                    <option value="date_desc">📅 Newest First</option>
+                                    <option value="date_asc">📅 Oldest First</option>
+                                    <option value="amount_desc">💰 Highest Amount</option>
+                                    <option value="amount_asc">💰 Lowest Amount</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Transaction Type</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={filterType}
+                                    onChange={e => setFilterType(e.target.value)}
+                                >
+                                    <option value="">All Categories</option>
+                                    {TX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Source Account</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={filterAccount}
+                                    onChange={e => setFilterAccount(e.target.value)}
+                                >
+                                    <option value="">All Accounts</option>
+                                    {data.accounts.map((a: Account) => (
+                                        <option key={a.id} value={a.id}>{a.bank_name} – {a.account_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Date Range</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                        type="date"
+                                        className="input-field h-11 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        value={filterDateFrom}
+                                        onChange={e => setFilterDateFrom(e.target.value)}
+                                    />
+                                    <input
+                                        type="date"
+                                        className="input-field h-11 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        value={filterDateTo}
+                                        onChange={e => setFilterDateTo(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Amount Range</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                        type="number"
+                                        className="input-field h-11 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Min Rs."
+                                        value={filterAmountMin}
+                                        onChange={e => setFilterAmountMin(e.target.value)}
+                                    />
+                                    <input
+                                        type="number"
+                                        className="input-field h-11 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Max Rs."
+                                        value={filterAmountMax}
+                                        onChange={e => setFilterAmountMax(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer details inside filter */}
+                        <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <span className="font-medium">Showing {filteredTransactions.length} of {data.transactions.length} records</span>
+                            {activeFilterCount > 0 && (
+                                <button
+                                    onClick={() => { setSearch(''); setFilterType(''); setFilterAccount(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterAmountMin(''); setFilterAmountMax(''); }}
+                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                >
+                                    Reset All Parameters
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Desktop Table View */}
@@ -262,7 +432,7 @@ export default function TransactionsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {data.transactions.map((t: Transaction) => {
+                                {filteredTransactions.map((t: Transaction) => {
                                     const account = data.accounts.find((a: Account) => a.id === t.account);
                                     return (
                                         <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
@@ -318,7 +488,7 @@ export default function TransactionsPage() {
 
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-4">
-                    {data.transactions.map((t: Transaction) => {
+                    {filteredTransactions.map((t: Transaction) => {
                         const account = data.accounts.find((a: Account) => a.id === t.account);
                         return (
                             <div key={t.id} className="card">

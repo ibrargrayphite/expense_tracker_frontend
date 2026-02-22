@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, Trash2, Edit3, X } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Search, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -18,6 +18,7 @@ const BANK_OPTIONS = [
     'Bank Alfalah',
     'Meezan Bank',
 ];
+
 
 interface Account {
     id: number;
@@ -37,6 +38,35 @@ export default function AccountsPage() {
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
     const [form, setForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '' });
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+
+    // Filter & sort state
+    const [search, setSearch] = useState('');
+    const [filterBank, setFilterBank] = useState('');
+    const [filterMinBalance, setFilterMinBalance] = useState('');
+    const [filterMaxBalance, setFilterMaxBalance] = useState('');
+    const [sortBy, setSortBy] = useState<'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc'>('balance_desc');
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+    const filteredAccounts = accounts
+        .filter(acc => {
+            const matchesSearch = !search ||
+                acc.account_name.toLowerCase().includes(search.toLowerCase()) ||
+                acc.bank_name.toLowerCase().includes(search.toLowerCase());
+            const matchesBank = !filterBank || acc.bank_name === filterBank;
+            const balance = parseFloat(acc.balance);
+            const matchesMinBalance = !filterMinBalance || balance >= parseFloat(filterMinBalance);
+            const matchesMaxBalance = !filterMaxBalance || balance <= parseFloat(filterMaxBalance);
+            return matchesSearch && matchesBank && matchesMinBalance && matchesMaxBalance;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'balance_desc') return parseFloat(b.balance) - parseFloat(a.balance);
+            if (sortBy === 'balance_asc') return parseFloat(a.balance) - parseFloat(b.balance);
+            if (sortBy === 'name_asc') return a.account_name.localeCompare(b.account_name);
+            if (sortBy === 'name_desc') return b.account_name.localeCompare(a.account_name);
+            return 0;
+        });
+
+    const totalBalance = filteredAccounts.reduce((s, a) => s + parseFloat(a.balance), 0);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -120,8 +150,113 @@ export default function AccountsPage() {
                     </button>
                 </div>
 
+                {/* Modern Filter & Sort Bar */}
+                <div className="card overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md mb-6 transition-all duration-300">
+                    <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="flex items-center gap-2 text-primary">
+                            <Search size={18} />
+                            <h3 className="font-bold text-slate-800 dark:text-slate-100">Search & Filter</h3>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {(search || filterBank || filterMinBalance || filterMaxBalance || sortBy !== 'balance_desc') && (
+                                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+                                    Filters Applied
+                                </span>
+                            )}
+                            <button
+                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                className={`btn btn-sm px-4 rounded-full transition-all duration-200 ${showAdvancedFilters
+                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    : 'btn-primary shadow-lg shadow-primary/20'
+                                    }`}
+                            >
+                                {showAdvancedFilters ? 'Hide Panel' : 'Filter Accounts'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className={`transition-all duration-300 ease-in-out ${showAdvancedFilters ? 'max-h-[1000px] opacity-100 p-6' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Search Accounts</label>
+                                <div className="relative group">
+                                    {/* <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" /> */}
+                                    <input
+                                        type="text"
+                                        className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Name or platform…"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Bank / Platform</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={filterBank}
+                                    onChange={e => setFilterBank(e.target.value)}
+                                >
+                                    <option value="">All Platforms</option>
+                                    {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Sort By</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value as any)}
+                                >
+                                    <option value="balance_desc">💰 Highest Balance</option>
+                                    <option value="balance_asc">💰 Lowest Balance</option>
+                                    <option value="name_asc">🔤 Name A→Z</option>
+                                    <option value="name_desc">🔤 Name Z→A</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Balance Range (Rs.)</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input
+                                        type="number"
+                                        className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Minimum"
+                                        value={filterMinBalance}
+                                        onChange={e => setFilterMinBalance(e.target.value)}
+                                    />
+                                    <input
+                                        type="number"
+                                        className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Maximum"
+                                        value={filterMaxBalance}
+                                        onChange={e => setFilterMaxBalance(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-4">
+                                <span>{filteredAccounts.length} accounts found</span>
+                                <span className="font-bold text-primary">Total: Rs. {totalBalance.toLocaleString()}</span>
+                            </div>
+                            {(search || filterBank || filterMinBalance || filterMaxBalance || sortBy !== 'balance_desc') && (
+                                <button
+                                    onClick={() => { setSearch(''); setFilterBank(''); setFilterMinBalance(''); setFilterMaxBalance(''); setSortBy('balance_desc'); }}
+                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                >
+                                    Clear all filters
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4">
-                    {accounts.map((acc: Account) => (
+                    {filteredAccounts.map((acc: Account) => (
                         <div key={acc.id} className="card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div className="flex items-center gap-4 w-full sm:w-auto">
                                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">

@@ -15,7 +15,10 @@ import {
   Wallet,
   PieChart as PieChartIcon,
   Activity,
-  Calendar
+  Calendar,
+  Search,
+  Filter,
+  ArrowUpDown
 } from 'lucide-react';
 import { format, subDays, startOfDay, parseISO } from 'date-fns';
 import {
@@ -72,6 +75,14 @@ export default function Dashboard() {
     transactions: [],
   });
   const [fetching, setFetching] = useState(true);
+
+  // Filter & sort state for dashboard sections
+  const [transactionSearch, setTransactionSearch] = useState('');
+  const [transactionSortBy, setTransactionSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+  const [accountSearch, setAccountSearch] = useState('');
+  const [accountSortBy, setAccountSortBy] = useState<'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc'>('balance_desc');
+  const [showTransactionFilters, setShowTransactionFilters] = useState(false);
+  const [showAccountFilters, setShowAccountFilters] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -191,6 +202,43 @@ export default function Dashboard() {
       value: Math.round(parseFloat(acc.balance)),
     }));
   }, [data.accounts]);
+
+  // Filtered and sorted transactions for dashboard
+  const filteredTransactions = useMemo(() => {
+    return data.transactions
+      .filter(t => {
+        const matchesSearch = !transactionSearch ||
+          t.note?.toLowerCase().includes(transactionSearch.toLowerCase()) ||
+          t.type.toLowerCase().includes(transactionSearch.toLowerCase());
+        return matchesSearch;
+      })
+      .sort((a, b) => {
+        if (transactionSortBy === 'date_desc') return new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (transactionSortBy === 'date_asc') return new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (transactionSortBy === 'amount_desc') return parseFloat(b.amount) - parseFloat(a.amount);
+        if (transactionSortBy === 'amount_asc') return parseFloat(a.amount) - parseFloat(b.amount);
+        return 0;
+      })
+      .slice(0, 5); // Show only 5 most recent/filtered
+  }, [data.transactions, transactionSearch, transactionSortBy]);
+
+  // Filtered and sorted accounts for dashboard
+  const filteredAccounts = useMemo(() => {
+    return data.accounts
+      .filter(acc => {
+        const matchesSearch = !accountSearch ||
+          acc.account_name.toLowerCase().includes(accountSearch.toLowerCase()) ||
+          acc.bank_name.toLowerCase().includes(accountSearch.toLowerCase());
+        return matchesSearch;
+      })
+      .sort((a, b) => {
+        if (accountSortBy === 'balance_desc') return parseFloat(b.balance) - parseFloat(a.balance);
+        if (accountSortBy === 'balance_asc') return parseFloat(a.balance) - parseFloat(b.balance);
+        if (accountSortBy === 'name_asc') return a.account_name.localeCompare(b.account_name);
+        if (accountSortBy === 'name_desc') return b.account_name.localeCompare(a.account_name);
+        return 0;
+      });
+  }, [data.accounts, accountSearch, accountSortBy]);
 
   if (loading || fetching) {
     return (
@@ -357,16 +405,62 @@ export default function Dashboard() {
                 <Clock className="text-primary" size={20} />
                 <h2 className="text-xl font-bold">Recent Transactions</h2>
               </div>
+              <button
+                onClick={() => setShowTransactionFilters(!showTransactionFilters)}
+                className={`p-2 rounded-lg transition-colors ${showTransactionFilters ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              >
+                <Filter size={16} />
+              </button>
             </div>
+
+            {/* Transaction Filters */}
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showTransactionFilters ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl space-y-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" />
+                    <input
+                      type="text"
+                      className="input-field pl-8 text-sm h-10 bg-white dark:bg-slate-900 border-none"
+                      placeholder="Search note…"
+                      value={transactionSearch}
+                      onChange={e => setTransactionSearch(e.target.value)}
+                    />
+                  </div> */}
+                  <select
+                    className="input-field text-sm h-10 bg-white dark:bg-slate-900 border-none sm:w-40"
+                    value={transactionSortBy}
+                    onChange={e => setTransactionSortBy(e.target.value as any)}
+                  >
+                    <option value="date_desc">📅 Newest</option>
+                    <option value="date_asc">📅 Oldest</option>
+                    <option value="amount_desc">💰 High</option>
+                    <option value="amount_asc">💰 Low</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-secondary uppercase tracking-widest font-bold">
+                  <span>{filteredTransactions.length} items</span>
+                  {(transactionSearch || transactionSortBy !== 'date_desc') && (
+                    <button
+                      onClick={() => { setTransactionSearch(''); setTransactionSortBy('date_desc'); }}
+                      className="text-primary hover:underline"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
-              {data.transactions.slice(0, 5).map((t) => {
+              {filteredTransactions.map((t) => {
                 const account = data.accounts.find(a => a.id === t.account);
                 const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type);
                 return (
-                  <div key={t.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={`p-2 rounded-lg ${isIncome ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'} shrink-0`}>
-                        {isIncome ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                  <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-xl">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isIncome ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                        {isIncome ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{t.note || t.type.replace('_', ' ')}</p>
@@ -379,9 +473,9 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-              {data.transactions.length === 0 && (
+              {filteredTransactions.length === 0 && (
                 <div className="text-center py-8 text-secondary">
-                  No transactions yet
+                  {data.transactions.length === 0 ? 'No transactions yet' : 'No transactions match your filters'}
                 </div>
               )}
             </div>
@@ -394,9 +488,55 @@ export default function Dashboard() {
                 <Wallet className="text-primary" size={20} />
                 <h2 className="text-xl font-bold">Account Summary</h2>
               </div>
+              <button
+                onClick={() => setShowAccountFilters(!showAccountFilters)}
+                className={`p-2 rounded-lg transition-colors ${showAccountFilters ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              >
+                <ArrowUpDown size={16} />
+              </button>
             </div>
+
+            {/* Account Filters */}
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showAccountFilters ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl space-y-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" />
+                    <input
+                      type="text"
+                      className="input-field pl-8 text-sm h-10 bg-white dark:bg-slate-900 border-none"
+                      placeholder="Search accounts…"
+                      value={accountSearch}
+                      onChange={e => setAccountSearch(e.target.value)}
+                    />
+                  </div> */}
+                  <select
+                    className="input-field text-sm h-10 bg-white dark:bg-slate-900 border-none sm:w-40"
+                    value={accountSortBy}
+                    onChange={e => setAccountSortBy(e.target.value as 'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc')}
+                  >
+                    <option value="balance_desc">💰 Balance High</option>
+                    <option value="balance_asc">💰 Balance Low</option>
+                    <option value="name_asc">🔤 Name A→Z</option>
+                    <option value="name_desc">🔤 Name Z→A</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-secondary uppercase tracking-widest font-bold">
+                  <span>{filteredAccounts.length} accounts</span>
+                  {(accountSearch || accountSortBy !== 'balance_desc') && (
+                    <button
+                      onClick={() => { setAccountSearch(''); setAccountSortBy('balance_desc'); }}
+                      className="text-primary hover:underline"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
-              {data.accounts.map((acc) => (
+              {filteredAccounts.map((acc) => (
                 <div key={acc.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
@@ -440,7 +580,7 @@ export default function Dashboard() {
             <div className="text-sm text-secondary mt-1">Income (30d)</div>
           </div>
         </div>
-      </main>
+      </main >
     </>
   );
 }

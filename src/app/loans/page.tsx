@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, X, ArrowUpRight, ArrowDownRight, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
+import { Plus, X, ArrowUpRight, ArrowDownRight, CheckCircle2, Edit3, Trash2, Search, Filter } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -21,6 +21,15 @@ export default function LoansPage() {
     const [form, setForm] = useState({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
     const [contactForm, setContactForm] = useState({ first_name: '', last_name: '', phone: '' });
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+
+    // Filter & sort
+    const [search, setSearch] = useState('');
+    const [filterType, setFilterType] = useState<'ALL' | 'TAKEN' | 'LENT'>('ALL');
+    const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'CLOSED'>('ALL');
+    const [filterMinAmount, setFilterMinAmount] = useState('');
+    const [filterMaxAmount, setFilterMaxAmount] = useState('');
+    const [sortBy, setSortBy] = useState<'amount_desc' | 'amount_asc' | 'name_asc' | 'name_desc'>('amount_desc');
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -122,6 +131,26 @@ export default function LoansPage() {
         return loan.person_name || 'Unknown';
     };
 
+    const filteredLoans = loans
+        .filter((l: any) => {
+            const matchesType = filterType === 'ALL' || l.type === filterType;
+            const matchesStatus = filterStatus === 'ALL' ||
+                (filterStatus === 'ACTIVE' && !l.is_closed) ||
+                (filterStatus === 'CLOSED' && l.is_closed);
+            const matchesSearch = !search || getDisplayName(l).toLowerCase().includes(search.toLowerCase());
+            const amount = parseFloat(l.remaining_amount);
+            const matchesMinAmount = !filterMinAmount || amount >= parseFloat(filterMinAmount);
+            const matchesMaxAmount = !filterMaxAmount || amount <= parseFloat(filterMaxAmount);
+            return matchesType && matchesStatus && matchesSearch && matchesMinAmount && matchesMaxAmount;
+        })
+        .sort((a: any, b: any) => {
+            if (sortBy === 'amount_desc') return parseFloat(b.remaining_amount) - parseFloat(a.remaining_amount);
+            if (sortBy === 'amount_asc') return parseFloat(a.remaining_amount) - parseFloat(b.remaining_amount);
+            if (sortBy === 'name_asc') return getDisplayName(a).localeCompare(getDisplayName(b));
+            if (sortBy === 'name_desc') return getDisplayName(b).localeCompare(getDisplayName(a));
+            return 0;
+        });
+
     return (
         <div className="min-h-screen">
             <Navbar />
@@ -133,6 +162,129 @@ export default function LoansPage() {
                     </button>
                 </div>
 
+                {/* Modern Filter & Sort Bar */}
+                <div className="card overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md mb-6 transition-all duration-300">
+                    <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="flex items-center gap-2 text-primary">
+                            <Filter size={18} />
+                            <h3 className="font-bold text-slate-800 dark:text-slate-100">Find Records</h3>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {(search || filterType !== 'ALL' || filterStatus !== 'ALL' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
+                                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+                                    Filters Active
+                                </span>
+                            )}
+                            <button
+                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                                className={`btn btn-sm px-4 rounded-full transition-all duration-200 ${showAdvancedFilters
+                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    : 'btn-primary shadow-lg shadow-primary/20'
+                                    }`}
+                            >
+                                {showAdvancedFilters ? 'Hide Panel' : 'Filter Records'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className={`transition-all duration-300 ease-in-out ${showAdvancedFilters ? 'max-h-[1000px] opacity-100 p-6' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Search</label>
+                                <div className="relative group">
+                                    {/* <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" /> */}
+                                    <input
+                                        type="text"
+                                        className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Name..."
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Type</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={filterType}
+                                    onChange={e => setFilterType(e.target.value as any)}
+                                >
+                                    <option value="ALL">All Records</option>
+                                    <option value="TAKEN">Loans Taken</option>
+                                    <option value="LENT">Money Lent</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Status</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={filterStatus}
+                                    onChange={e => setFilterStatus(e.target.value as any)}
+                                >
+                                    <option value="ALL">All Status</option>
+                                    <option value="ACTIVE">Active Only</option>
+                                    <option value="CLOSED">Closed Only</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Sort</label>
+                                <select
+                                    className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value as any)}
+                                >
+                                    <option value="amount_desc">💰 Highest Amount</option>
+                                    <option value="amount_asc">💰 Lowest Amount</option>
+                                    <option value="name_asc">🔤 Name A→Z</option>
+                                    <option value="name_desc">🔤 Name Z→A</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Amount Range (Rs.)</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input
+                                        type="number"
+                                        className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Minimum"
+                                        value={filterMinAmount}
+                                        onChange={e => setFilterMinAmount(e.target.value)}
+                                    />
+                                    <input
+                                        type="number"
+                                        className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        placeholder="Maximum"
+                                        value={filterMaxAmount}
+                                        onChange={e => setFilterMaxAmount(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <span>
+                                {filterStatus === 'ALL' ?
+                                    `${filteredLoans.filter((l: any) => !l.is_closed).length} active / ${filteredLoans.filter((l: any) => l.is_closed).length} closed` :
+                                    filterStatus === 'ACTIVE' ?
+                                        `${filteredLoans.filter((l: any) => !l.is_closed).length} active loans` :
+                                        `${filteredLoans.filter((l: any) => l.is_closed).length} closed loans`
+                                }
+                            </span>
+                            {(search || filterType !== 'ALL' || filterStatus !== 'ALL' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
+                                <button
+                                    onClick={() => { setSearch(''); setFilterType('ALL'); setFilterStatus('ALL'); setFilterMinAmount(''); setFilterMaxAmount(''); setSortBy('amount_desc'); }}
+                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                >
+                                    Reset Filters
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Active Loans */}
                     <section className="space-y-4">
@@ -141,7 +293,7 @@ export default function LoansPage() {
                             Loans Taken
                         </h2>
                         <div className="space-y-4">
-                            {loans.filter((l: any) => l.type === 'TAKEN' && !l.is_closed).map((loan: any) => (
+                            {filteredLoans.filter((l: any) => l.type === 'TAKEN' && !l.is_closed).map((loan: any) => (
                                 <div key={loan.id} className="card border-l-4 border-red-500">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
@@ -181,7 +333,7 @@ export default function LoansPage() {
                             Money Lent
                         </h2>
                         <div className="space-y-4">
-                            {loans.filter((l: any) => l.type === 'LENT' && !l.is_closed).map((loan: any) => (
+                            {filteredLoans.filter((l: any) => l.type === 'LENT' && !l.is_closed).map((loan: any) => (
                                 <div key={loan.id} className="card border-l-4 border-green-500">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
