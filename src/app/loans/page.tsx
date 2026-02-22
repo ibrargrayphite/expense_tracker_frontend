@@ -349,7 +349,7 @@ export default function LoansPage() {
                                                 <button onClick={() => handleOpenModal(loan)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
                                                     <Edit3 size={20} />
                                                 </button>
-                                                <button onClick={() => deleteLoan(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                                <button onClick={() => setConfirmDelete(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
                                                     <Trash2 size={20} />
                                                 </button>
                                             </div>
