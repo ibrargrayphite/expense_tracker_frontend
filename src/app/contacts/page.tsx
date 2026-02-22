@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, Trash2, Edit3, X, Phone, User as UserIcon, CreditCard, Search, Filter } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Phone, User as UserIcon, CreditCard, Search, Filter, HandCoins, History as HistoryIcon, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -15,12 +15,31 @@ interface ContactAccount {
     account_number: string;
 }
 
+interface Loan {
+    id: number;
+    type: 'TAKEN' | 'LENT';
+    total_amount: string;
+    remaining_amount: string;
+    description: string;
+    is_closed: boolean;
+}
+
+interface Transaction {
+    id: number;
+    amount: string;
+    type: 'INCOME' | 'EXPENSE' | 'LOAN_TAKEN' | 'MONEY_LENT' | 'REPAYMENT' | 'REIMBURSEMENT';
+    note: string;
+    date: string;
+}
+
 interface Contact {
     id: number;
     first_name: string;
     last_name: string;
     phone: string;
     accounts: ContactAccount[];
+    loans: Loan[];
+    transactions: Transaction[];
 }
 
 export default function ContactsPage() {
@@ -37,6 +56,11 @@ export default function ContactsPage() {
     const [accountForm, setAccountForm] = useState({ account_name: '', account_number: '' });
     const [confirmDeleteContact, setConfirmDeleteContact] = useState<number | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
+    const [expandedContacts, setExpandedContacts] = useState<Record<number, boolean>>({});
+
+    const toggleExpand = (id: number) => {
+        setExpandedContacts(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     // Filter & sort
     const [search, setSearch] = useState('');
@@ -279,10 +303,17 @@ export default function ContactsPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <button onClick={() => handleOpenModal(contact)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
+                                    <button
+                                        onClick={() => toggleExpand(contact.id)}
+                                        className={`p-2 rounded-xl transition-all ${expandedContacts[contact.id] ? 'bg-primary text-white shadow-md' : 'text-primary hover:bg-primary/10'}`}
+                                        title="View Details"
+                                    >
+                                        <ArrowUpDown size={20} />
+                                    </button>
+                                    <button onClick={() => handleOpenModal(contact)} className="p-2 text-slate-400 hover:text-primary rounded-xl transition-colors">
                                         <Edit3 size={20} />
                                     </button>
-                                    <button onClick={() => setConfirmDeleteContact(contact.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                    <button onClick={() => setConfirmDeleteContact(contact.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-colors">
                                         <Trash2 size={20} />
                                     </button>
                                 </div>
@@ -291,37 +322,108 @@ export default function ContactsPage() {
                             <div className="mt-4">
                                 <div className="flex items-center justify-between mb-3">
                                     <h4 className="font-bold flex items-center gap-2 text-sm uppercase tracking-wider text-secondary">
-                                        <CreditCard size={16} /> Accounts
+                                        <CreditCard size={16} /> Linked Accounts
                                     </h4>
                                     <button
                                         onClick={() => handleOpenAccountModal(contact)}
                                         className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                                     >
-                                        <Plus size={14} /> Add Account
+                                        <Plus size={14} /> Add
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {contact.accounts.map((acc) => (
-                                        <div key={acc.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl flex items-center justify-between group">
+                                        <div key={acc.id} className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl flex items-center justify-between group border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all">
                                             <div>
-                                                <p className="font-bold text-sm">{acc.account_name}</p>
-                                                <p className="text-xs text-secondary">{acc.account_number}</p>
+                                                <p className="font-bold text-[13px]">{acc.account_name}</p>
+                                                <p className="text-[10px] text-secondary">{acc.account_number}</p>
                                             </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1.5 text-slate-400 hover:text-primary transition-colors">
-                                                    <Edit3 size={14} />
+                                                <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1 text-slate-400 hover:text-primary transition-colors">
+                                                    <Edit3 size={12} />
                                                 </button>
-                                                <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
-                                                    <Trash2 size={14} />
+                                                <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
+                                                    <Trash2 size={12} />
                                                 </button>
                                             </div>
                                         </div>
                                     ))}
                                     {contact.accounts.length === 0 && (
-                                        <p className="text-xs text-secondary italic">No accounts linked.</p>
+                                        <p className="text-[11px] text-secondary italic opacity-60">No linked personal accounts.</p>
                                     )}
                                 </div>
                             </div>
+
+                            {/* Expandable Details Section */}
+                            {expandedContacts[contact.id] && (
+                                <div className="mt-4 space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800 animate-scale-in">
+                                    {/* Loans Section */}
+                                    <div>
+                                        <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
+                                            <HandCoins size={14} className="text-orange-500" /> Loans & Lents
+                                        </h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {contact.loans && contact.loans.length > 0 ? (
+                                                contact.loans.map((loan) => (
+                                                    <div key={loan.id} className={`p-3 rounded-xl border ${loan.is_closed ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-white dark:bg-slate-800 border-orange-100 dark:border-orange-900/30 shadow-sm'}`}>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${loan.type === 'TAKEN' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'}`}>
+                                                                {loan.type === 'TAKEN' ? 'BORROWED' : 'LENT'}
+                                                            </span>
+                                                            <span className={`text-[10px] font-bold ${loan.is_closed ? 'text-slate-400' : 'text-orange-500'}`}>
+                                                                {loan.is_closed ? 'Settled' : 'Active'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm font-black">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
+                                                        <p className="text-[10px] text-secondary truncate mt-1">{loan.description || 'No description'}</p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-[11px] text-secondary italic opacity-60">No active loans with this contact.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Transactions Section */}
+                                    <div>
+                                        <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
+                                            <HistoryIcon size={14} className="text-blue-500" /> Recent Activity
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {contact.transactions && contact.transactions.length > 0 ? (
+                                                contact.transactions.map((t) => (
+                                                    <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
+                                                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
+                                                                : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
+                                                                }`}>
+                                                                {t.type === 'INCOME' ? 'IN' : t.type === 'EXPENSE' ? 'EX' : t.type === 'LOAN_TAKEN' ? 'LT' : t.type === 'MONEY_LENT' ? 'ML' : t.type === 'REPAYMENT' ? 'RP' : 'RB'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[13px] font-bold">{t.note || t.type.replace('_', ' ')}</p>
+                                                                <p className="text-[9px] text-secondary font-medium">
+                                                                    {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <p className={`text-[13px] font-black ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
+                                                            ? 'text-emerald-500'
+                                                            : 'text-rose-500'
+                                                            }`}>
+                                                            {t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN' ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-4 text-[11px] text-secondary italic opacity-60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                                                    No activity history.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))}
                     {contacts.length === 0 && (

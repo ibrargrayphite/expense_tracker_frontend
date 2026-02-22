@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, Trash2, Edit3, X, Search, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit3, X, Search, ArrowUpDown, History as HistoryIcon } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -31,6 +31,14 @@ const BANK_COLORS: Record<string, { bg: string; text: string }> = {
     "default": { bg: '#E5E7EB', text: '#111827' }, // gray fallback
 };
 
+interface Transaction {
+    id: number;
+    amount: string;
+    type: 'INCOME' | 'EXPENSE' | 'LOAN_TAKEN' | 'MONEY_LENT' | 'REPAYMENT' | 'REIMBURSEMENT';
+    note: string;
+    date: string;
+}
+
 interface Account {
     id: number;
     bank_name: string;
@@ -38,6 +46,7 @@ interface Account {
     account_number: string;
     iban: string;
     balance: string;
+    transactions: Transaction[];
 }
 
 export default function AccountsPage() {
@@ -49,6 +58,11 @@ export default function AccountsPage() {
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
     const [form, setForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '' });
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+    const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
+
+    const toggleExpand = (id: number) => {
+        setExpandedAccounts(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     // Filter & sort state
     const [search, setSearch] = useState('');
@@ -268,36 +282,89 @@ export default function AccountsPage() {
 
                 <div className="grid grid-cols-1 gap-4">
                     {filteredAccounts.map((acc: Account) => (
-                        <div key={acc.id} className="card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-4 w-full sm:w-auto">
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold shrink-0" style={{ backgroundColor: BANK_COLORS[acc.bank_name]?.bg || BANK_COLORS.default.bg, color: BANK_COLORS[acc.bank_name]?.text || BANK_COLORS.default.text }}>
-                                    {acc.bank_name[0]}
+                        <div key={acc.id} className="card overflow-hidden p-0 flex flex-col border border-slate-200 dark:border-slate-800 transition-all hover:shadow-lg">
+                            <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-4 w-full sm:w-auto">
+                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold shrink-0" style={{ backgroundColor: BANK_COLORS[acc.bank_name]?.bg || BANK_COLORS.default.bg, color: BANK_COLORS[acc.bank_name]?.text || BANK_COLORS.default.text }}>
+                                        {acc.bank_name[0]}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold truncate">{acc.account_name}</h3>
+                                        {acc.bank_name !== 'Cash' && (
+                                            <p className="text-sm text-secondary">
+                                                {acc.bank_name}
+                                                {acc.account_number ? ` - ${acc.account_number}` : ''}
+                                                {acc.iban ? ` (IBAN: ${acc.iban})` : ''}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold truncate">{acc.account_name}</h3>
-                                    {acc.bank_name !== 'Cash' && (
-                                        <p className="text-sm text-secondary">
-                                            {acc.bank_name}
-                                            {acc.account_number ? ` - ${acc.account_number}` : ''}
-                                            {acc.iban ? ` (IBAN: ${acc.iban})` : ''}
-                                        </p>
-                                    )}
+                                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
+                                    <div className="text-left sm:text-left">
+                                        <p className="text-sm text-secondary font-medium">Balance</p>
+                                        <p className="text-lg sm:text-xl font-bold text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            onClick={() => toggleExpand(acc.id)}
+                                            className={`p-2 rounded-xl transition-all ${expandedAccounts[acc.id] ? 'bg-primary text-white shadow-md' : 'text-primary hover:bg-primary/10'}`}
+                                            title="View Transactions"
+                                        >
+                                            <ArrowUpDown size={20} />
+                                        </button>
+                                        <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
+                                            <Edit3 size={20} />
+                                        </button>
+                                        <button onClick={() => setConfirmDelete(acc.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                            <Trash2 size={20} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
-                                <div className="text-left sm:text-left">
-                                    <p className="text-sm text-secondary font-medium">Balance</p>
-                                    <p className="text-lg sm:text-xl font-bold">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
+
+                            {/* Inline Transactions View */}
+                            {expandedAccounts[acc.id] && (
+                                <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 animate-scale-in">
+                                    <div className="p-4 sm:p-6">
+                                        <h4 className="text-xs font-black uppercase tracking-widest text-secondary mb-4 flex items-center gap-2">
+                                            <HistoryIcon size={14} className="text-primary" />
+                                            Recent Transactions
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {acc.transactions && acc.transactions.length > 0 ? (
+                                                acc.transactions.map((t) => (
+                                                    <div key={t.id} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 shadow-sm transition-all hover:translate-x-1">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
+                                                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
+                                                                : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
+                                                                }`}>
+                                                                {t.type === 'INCOME' ? 'IN' : t.type === 'EXPENSE' ? 'EX' : t.type === 'LOAN_TAKEN' ? 'LT' : t.type === 'MONEY_LENT' ? 'ML' : t.type === 'REPAYMENT' ? 'RP' : 'RB'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold">{t.note || t.type.replace('_', ' ')}</p>
+                                                                <p className="text-[10px] text-secondary font-medium">
+                                                                    {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <p className={`text-sm font-black ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
+                                                            ? 'text-emerald-500'
+                                                            : 'text-rose-500'
+                                                            }`}>
+                                                            {t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN' ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-6 text-xs text-secondary italic opacity-60">
+                                                    No transactions recorded for this account.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <button onClick={() => handleOpenModal(acc)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
-                                        <Edit3 size={20} />
-                                    </button>
-                                    <button onClick={() => setConfirmDelete(acc.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                                        <Trash2 size={20} />
-                                    </button>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     ))}
                     {accounts.length === 0 && (
