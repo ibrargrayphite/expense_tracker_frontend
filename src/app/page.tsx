@@ -259,7 +259,7 @@ export default function Dashboard() {
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight">Dashboard</h1>
-            <p className="text-secondary mt-1">Welcome back, {user?.username}!</p>
+            <p className="text-secondary mt-1">Welcome back, {user?.first_name} {user?.last_name}!</p>
           </div>
           <div className="flex items-center gap-2 text-sm text-secondary">
             <Calendar size={16} />

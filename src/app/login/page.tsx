@@ -12,6 +12,8 @@ type Mode = 'login' | 'register';
 export default function AuthPage() {
     const [mode, setMode] = useState<Mode>('login');
     const [username, setUsername] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +35,8 @@ export default function AuthPage() {
         setMode(m);
         setError('');
         setUsername('');
+        setFirstName('');
+        setLastName('');
         setEmail('');
         setPassword('');
         setConfirmPassword('');
@@ -53,7 +57,13 @@ export default function AuthPage() {
                 const response = await api.post('token/', { username, password });
                 login(response.data.access, response.data.refresh);
             } else {
-                await api.post('register/', { username, email, password });
+                await api.post('register/', {
+                    username,
+                    email,
+                    password,
+                    first_name: firstName,
+                    last_name: lastName
+                });
                 const response = await api.post('token/', { username, password });
                 login(response.data.access, response.data.refresh);
             }
@@ -434,6 +444,40 @@ export default function AuthPage() {
                                     />
                                 </div>
                             </div>
+
+                            {/* First & Last Name — register only */}
+                            {mode === 'register' && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="field-label">First Name</label>
+                                        <div className="field-wrap">
+                                            <span className="field-icon"><User size={15} /></span>
+                                            <input
+                                                type="text"
+                                                className="auth-input"
+                                                placeholder="John"
+                                                value={firstName}
+                                                onChange={(e) => setFirstName(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="field-label">Last Name</label>
+                                        <div className="field-wrap">
+                                            <span className="field-icon"><User size={15} /></span>
+                                            <input
+                                                type="text"
+                                                className="auth-input"
+                                                placeholder="Doe"
+                                                value={lastName}
+                                                onChange={(e) => setLastName(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Email — register only */}
                             {mode === 'register' && (
