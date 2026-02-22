@@ -40,6 +40,11 @@ interface Contact {
     accounts: ContactAccount[];
     loans: Loan[];
     transactions: Transaction[];
+    loan_stats: {
+        total_loaned: number;
+        total_lent: number;
+        net_balance: number;
+    };
 }
 
 export default function ContactsPage() {
@@ -316,6 +321,27 @@ export default function ContactsPage() {
                                     <button onClick={() => setConfirmDeleteContact(contact.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-colors">
                                         <Trash2 size={20} />
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* Loan Summary Mini-Dashboard */}
+                            <div className="grid grid-cols-3 gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 mt-2">
+                                <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Total Lent</p>
+                                    <p className="text-sm font-black text-emerald-500">Rs. {contact.loan_stats.total_lent.toLocaleString()}</p>
+                                </div>
+                                <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Borrowed</p>
+                                    <p className="text-sm font-black text-rose-500">Rs. {contact.loan_stats.total_loaned.toLocaleString()}</p>
+                                </div>
+                                <div className={`text-center p-2 rounded-xl shadow-sm border ${contact.loan_stats.net_balance >= 0
+                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
+                                    : 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20'
+                                    }`}>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Net Balance</p>
+                                    <p className={`text-sm font-black ${contact.loan_stats.net_balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {contact.loan_stats.net_balance >= 0 ? '+' : ''} Rs. {contact.loan_stats.net_balance.toLocaleString()}
+                                    </p>
                                 </div>
                             </div>
 

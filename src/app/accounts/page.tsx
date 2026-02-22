@@ -17,6 +17,7 @@ const BANK_OPTIONS = [
     'SadaPay',
     'Bank Alfalah',
     'Meezan Bank',
+    'HBL',
 ];
 
 // Define background and text colors for each bank
@@ -28,6 +29,7 @@ const BANK_COLORS: Record<string, { bg: string; text: string }> = {
     "SadaPay": { bg: '#01D3B1', text: '#000000' },
     "Bank Alfalah": { bg: '#DA291C', text: '#FFFFFF' },
     "Meezan Bank": { bg: '#701E7D', text: '#FFFFFF' },
+    "HBL": { bg: '#008269', text: '#FFFFFF' },
     "default": { bg: '#E5E7EB', text: '#111827' }, // gray fallback
 };
 
