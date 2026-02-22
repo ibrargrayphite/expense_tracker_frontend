@@ -26,9 +26,11 @@ export default function ContactsPage() {
     const router = useRouter();
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingContact, setEditingContact] = useState<Contact | null>(null);
     const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [form, setForm] = useState({ first_name: '', last_name: '', phone: '' });
+    const [editingAccount, setEditingAccount] = useState<ContactAccount | null>(null);
     const [accountForm, setAccountForm] = useState({ account_name: '', account_number: '' });
 
     useEffect(() => {
@@ -45,11 +47,39 @@ export default function ContactsPage() {
         }
     };
 
+    const handleOpenModal = (contact: Contact | null = null) => {
+        if (contact) {
+            setEditingContact(contact);
+            setForm({ first_name: contact.first_name, last_name: contact.last_name, phone: contact.phone });
+        } else {
+            setEditingContact(null);
+            setForm({ first_name: '', last_name: '', phone: '' });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleOpenAccountModal = (contact: Contact, account: ContactAccount | null = null) => {
+        setSelectedContact(contact);
+        if (account) {
+            setEditingAccount(account);
+            setAccountForm({ account_name: account.account_name, account_number: account.account_number });
+        } else {
+            setEditingAccount(null);
+            setAccountForm({ account_name: '', account_number: '' });
+        }
+        setIsAccountModalOpen(true);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('contacts/', form);
+            if (editingContact) {
+                await api.put(`contacts/${editingContact.id}/`, form);
+            } else {
+                await api.post('contacts/', form);
+            }
             setIsModalOpen(false);
+            setEditingContact(null);
             setForm({ first_name: '', last_name: '', phone: '' });
             fetchContacts();
         } catch (err) {
@@ -61,11 +91,19 @@ export default function ContactsPage() {
         e.preventDefault();
         if (!selectedContact) return;
         try {
-            await api.post('contact-accounts/', {
-                ...accountForm,
-                contact: selectedContact.id
-            });
+            if (editingAccount) {
+                await api.put(`contact-accounts/${editingAccount.id}/`, {
+                    ...accountForm,
+                    contact: selectedContact.id
+                });
+            } else {
+                await api.post('contact-accounts/', {
+                    ...accountForm,
+                    contact: selectedContact.id
+                });
+            }
             setIsAccountModalOpen(false);
+            setEditingAccount(null);
             setAccountForm({ account_name: '', account_number: '' });
             fetchContacts();
         } catch (err) {
@@ -101,7 +139,7 @@ export default function ContactsPage() {
             <main className="max-w-4xl mx-auto px-4 mt-8 space-y-8 animate-fade-in">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Contacts</h1>
-                    <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
+                    <button onClick={() => handleOpenModal()} className="btn btn-primary">
                         <Plus size={20} /> Add Contact
                     </button>
                 </div>
@@ -121,9 +159,14 @@ export default function ContactsPage() {
                                         </p>
                                     </div>
                                 </div>
-                                <button onClick={() => deleteContact(contact.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                                    <Trash2 size={20} />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => handleOpenModal(contact)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
+                                        <Edit3 size={20} />
+                                    </button>
+                                    <button onClick={() => deleteContact(contact.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                        <Trash2 size={20} />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="mt-4">
@@ -132,7 +175,7 @@ export default function ContactsPage() {
                                         <CreditCard size={16} /> Accounts
                                     </h4>
                                     <button
-                                        onClick={() => { setSelectedContact(contact); setIsAccountModalOpen(true); }}
+                                        onClick={() => handleOpenAccountModal(contact)}
                                         className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                                     >
                                         <Plus size={14} /> Add Account
@@ -140,14 +183,19 @@ export default function ContactsPage() {
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {contact.accounts.map((acc) => (
-                                        <div key={acc.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl flex items-center justify-between">
+                                        <div key={acc.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl flex items-center justify-between group">
                                             <div>
                                                 <p className="font-bold text-sm">{acc.account_name}</p>
                                                 <p className="text-xs text-secondary">{acc.account_number}</p>
                                             </div>
-                                            <button onClick={() => deleteAccount(acc.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
-                                                <Trash2 size={14} />
-                                            </button>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1.5 text-slate-400 hover:text-primary transition-colors">
+                                                    <Edit3 size={14} />
+                                                </button>
+                                                <button onClick={() => deleteAccount(acc.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                     {contact.accounts.length === 0 && (
@@ -170,7 +218,7 @@ export default function ContactsPage() {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="card w-full max-w-md animate-fade-in">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">New Contact</h2>
+                            <h2 className="text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Contact'}</h2>
                             <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -207,7 +255,9 @@ export default function ContactsPage() {
                                     required
                                 />
                             </div>
-                            <button type="submit" className="btn btn-primary w-full mt-4">Save Contact</button>
+                            <button type="submit" className="btn btn-primary w-full mt-4">
+                                {editingContact ? 'Update Contact' : 'Save Contact'}
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -218,7 +268,9 @@ export default function ContactsPage() {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="card w-full max-w-md animate-fade-in">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">Add Account for {selectedContact?.first_name}</h2>
+                            <h2 className="text-2xl font-bold">
+                                {editingAccount ? `Edit Account for ${selectedContact?.first_name} ${selectedContact?.last_name}` : `Add Account for ${selectedContact?.first_name} ${selectedContact?.last_name}`}
+                            </h2>
                             <button onClick={() => setIsAccountModalOpen(false)}><X size={24} /></button>
                         </div>
                         <form onSubmit={handleAddAccount} className="space-y-4">
@@ -244,7 +296,9 @@ export default function ContactsPage() {
                                     required
                                 />
                             </div>
-                            <button type="submit" className="btn btn-primary w-full mt-4">Add Account</button>
+                            <button type="submit" className="btn btn-primary w-full mt-4">
+                                {editingAccount ? 'Update Account' : 'Add Account'}
+                            </button>
                         </form>
                     </div>
                 </div>

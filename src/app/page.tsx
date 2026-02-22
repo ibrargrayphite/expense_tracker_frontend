@@ -221,7 +221,7 @@ export default function Dashboard() {
 
         {/* Top Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <div className="card bg-gradient-to-br from-indigo-600 to-indigo-800 text-white border-none">
+          <div className="card">
             <div className="flex justify-between items-start mb-4">
               <span className="opacity-80 font-medium text-sm md:text-base">Total Balance</span>
               <Landmark size={20} className="opacity-80 shrink-0" />

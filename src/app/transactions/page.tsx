@@ -26,11 +26,18 @@ interface Account {
 
 interface Loan {
     id: number;
+    contact: number | null;
+    contact_name: string | null;
     person_name: string;
     type: string;
     remaining_amount: string;
     total_amount: string;
     is_closed: boolean;
+}
+
+interface Contact {
+    id: number;
+    full_name: string;
 }
 
 interface Transaction {
@@ -51,12 +58,15 @@ export default function TransactionsPage() {
         transactions: Transaction[];
         accounts: Account[];
         loans: Loan[];
-    }>({ transactions: [], accounts: [], loans: [] });
+        contacts: Contact[];
+    }>({ transactions: [], accounts: [], loans: [], contacts: [] });
+    const [selectedContactId, setSelectedContactId] = useState<string>('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
     const [form, setForm] = useState({
         account: '',
         loan: '',
+        contact: '',
         amount: '',
         type: 'EXPENSE',
         note: '',
@@ -71,12 +81,18 @@ export default function TransactionsPage() {
 
     const fetchData = async () => {
         try {
-            const [txRes, accRes, loanRes] = await Promise.all([
+            const [txRes, accRes, loanRes, contactRes] = await Promise.all([
                 api.get('transactions/'),
                 api.get('accounts/'),
                 api.get('loans/'),
+                api.get('contacts/'),
             ]);
-            setData({ transactions: txRes.data, accounts: accRes.data, loans: loanRes.data });
+            setData({
+                transactions: txRes.data,
+                accounts: accRes.data,
+                loans: loanRes.data,
+                contacts: contactRes.data
+            });
             if (accRes.data.length > 0 && !form.account) {
                 setForm(prev => ({ ...prev, account: accRes.data[0].id.toString() }));
             }
@@ -103,6 +119,7 @@ export default function TransactionsPage() {
             });
             setIsModalOpen(false);
             setImage(null);
+            setSelectedContactId('');
             setForm({ ...form, amount: '', note: '', loan: '' });
             fetchData();
         } catch (err) {
@@ -188,7 +205,7 @@ export default function TransactionsPage() {
                                             <td className="p-4 text-sm max-w-xs truncate">
                                                 <div className="flex items-center gap-2">
                                                     {t.image && <ImageIcon size={14} className="text-primary shrink-0" />}
-                                                    <span>{t.note || '-'}</span>
+                                                    <span className="whitespace-pre-wrap">{t.note || '-'}</span>
                                                 </div>
                                             </td>
                                             <td className={`p-4 text-sm font-bold text-right whitespace-nowrap ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? 'text-green-600' : 'text-red-600'
@@ -251,7 +268,7 @@ export default function TransactionsPage() {
                                     {t.note && (
                                         <div>
                                             <span className="text-secondary text-xs">Note: </span>
-                                            <span className="break-words">{t.note}</span>
+                                            <span className="break-words whitespace-pre-wrap">{t.note}</span>
                                         </div>
                                     )}
                                     {t.image && (
@@ -278,7 +295,10 @@ export default function TransactionsPage() {
                     <div className="card w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold">New Transaction</h2>
-                            <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+                            <button onClick={() => {
+                                setIsModalOpen(false);
+                                setSelectedContactId('');
+                            }}><X size={24} /></button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -317,25 +337,48 @@ export default function TransactionsPage() {
                             </div>
 
                             {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Select Loan Record</label>
-                                    <select
-                                        className="input-field"
-                                        value={form.loan}
-                                        onChange={e => setForm({ ...form, loan: e.target.value })}
-                                        required
-                                    >
-                                        <option value="">-- Choose Person --</option>
-                                        {data.loans
-                                            .filter((l: any) =>
-                                                (form.type === 'REPAYMENT' || form.type === 'LOAN_TAKEN' ? l.type === 'TAKEN' : l.type === 'LENT')
-                                                && !l.is_closed
-                                            )
-                                            .map((l: any) => (
-                                                <option key={l.id} value={l.id}>{getLoanDisplayName(l)} (Rem: Rs. {l.remaining_amount})</option>
-                                            ))
-                                        }
-                                    </select>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className={['LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) ? 'col-span-2' : ''}>
+                                        <label className="block text-sm font-medium mb-1">Select Contact</label>
+                                        <select
+                                            className="input-field"
+                                            value={form.contact || selectedContactId}
+                                            onChange={e => {
+                                                setSelectedContactId(e.target.value);
+                                                setForm({ ...form, contact: e.target.value, loan: '' });
+                                            }}
+                                            required
+                                        >
+                                            <option value="">-- Choose Contact --</option>
+                                            {data.contacts.map((c: Contact) => (
+                                                <option key={c.id} value={c.id}>{c.full_name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {['REPAYMENT', 'REIMBURSEMENT'].includes(form.type) && (
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Select Loan Record</label>
+                                            <select
+                                                className={`input-field ${!selectedContactId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                value={form.loan}
+                                                onChange={e => setForm({ ...form, loan: e.target.value })}
+                                                required
+                                                disabled={!selectedContactId}
+                                            >
+                                                <option value="">-- Choose Loan --</option>
+                                                {data.loans
+                                                    .filter((l: Loan) =>
+                                                        (form.type === 'REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT')
+                                                        && !l.is_closed
+                                                        && (l.contact === parseInt(selectedContactId))
+                                                    )
+                                                    .map((l: Loan) => (
+                                                        <option key={l.id} value={l.id}>{getLoanDisplayName(l)} (Rem: Rs. {l.remaining_amount})</option>
+                                                    ))
+                                                }
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

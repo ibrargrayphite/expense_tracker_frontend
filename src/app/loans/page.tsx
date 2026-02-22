@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, X, ArrowUpRight, ArrowDownRight, CheckCircle2 } from 'lucide-react';
+import { Plus, X, ArrowUpRight, ArrowDownRight, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
 
 export default function LoansPage() {
     const { user, loading } = useAuth();
@@ -13,6 +13,7 @@ export default function LoansPage() {
     const [loans, setLoans] = useState([]);
     const [contacts, setContacts] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingLoan, setEditingLoan] = useState<any>(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [form, setForm] = useState({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
     const [contactForm, setContactForm] = useState({ first_name: '', last_name: '', phone: '' });
@@ -43,14 +44,39 @@ export default function LoansPage() {
         }
     };
 
+    const handleOpenModal = (loan: any = null) => {
+        if (loan) {
+            setEditingLoan(loan);
+            setForm({
+                contact: loan.contact || '',
+                person_name: loan.person_name || '',
+                type: loan.type,
+                total_amount: loan.total_amount,
+                description: loan.description || ''
+            });
+        } else {
+            setEditingLoan(null);
+            setForm({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
+        }
+        setIsModalOpen(true);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('loans/', {
-                ...form,
-                remaining_amount: form.total_amount
-            });
+            if (editingLoan) {
+                await api.put(`loans/${editingLoan.id}/`, {
+                    ...form,
+                    remaining_amount: form.total_amount // Reset remaining for now if amount changed, or we could handle it better
+                });
+            } else {
+                await api.post('loans/', {
+                    ...form,
+                    remaining_amount: form.total_amount
+                });
+            }
             setIsModalOpen(false);
+            setEditingLoan(null);
             setForm({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
             fetchLoans();
         } catch (err) {
@@ -71,6 +97,17 @@ export default function LoansPage() {
         }
     };
 
+    const deleteLoan = async (id: number) => {
+        if (confirm('Are you sure? This will delete the loan record.')) {
+            try {
+                await api.delete(`loans/${id}/`);
+                fetchLoans();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    };
+
     const getDisplayName = (loan: any) => {
         if (loan.contact_name) return loan.contact_name;
         return loan.person_name || 'Unknown';
@@ -82,7 +119,7 @@ export default function LoansPage() {
             <main className="max-w-5xl mx-auto px-4 mt-8 space-y-8 animate-fade-in">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Loans & Lending</h1>
-                    <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
+                    <button onClick={() => handleOpenModal()} className="btn btn-primary">
                         <Plus size={20} /> New Record
                     </button>
                 </div>
@@ -100,11 +137,21 @@ export default function LoansPage() {
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold text-lg truncate">{getDisplayName(loan)}</h3>
-                                            <p className="text-sm text-secondary break-words">{loan.description || 'No notes'}</p>
+                                            <p className="text-sm text-secondary break-words whitespace-pre-wrap mt-1">{loan.description || 'No notes'}</p>
                                         </div>
-                                        <div className="text-left sm:text-right w-full sm:w-auto">
-                                            <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
-                                            <p className="text-xl font-bold text-red-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
+                                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                            <div className="text-left sm:text-right">
+                                                <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
+                                                <p className="text-xl font-bold text-red-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleOpenModal(loan)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
+                                                    <Edit3 size={20} />
+                                                </button>
+                                                <button onClick={() => deleteLoan(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
@@ -130,11 +177,21 @@ export default function LoansPage() {
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold text-lg truncate">{getDisplayName(loan)}</h3>
-                                            <p className="text-sm text-secondary break-words">{loan.description || 'No notes'}</p>
+                                            <p className="text-sm text-secondary break-words whitespace-pre-wrap mt-1">{loan.description || 'No notes'}</p>
                                         </div>
-                                        <div className="text-left sm:text-right w-full sm:w-auto">
-                                            <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
-                                            <p className="text-xl font-bold text-green-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
+                                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                            <div className="text-left sm:text-right">
+                                                <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
+                                                <p className="text-xl font-bold text-green-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleOpenModal(loan)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
+                                                    <Edit3 size={20} />
+                                                </button>
+                                                <button onClick={() => deleteLoan(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
@@ -154,7 +211,7 @@ export default function LoansPage() {
                     <h2 className="text-xl font-bold">Closed Records</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {loans.filter((l: any) => l.is_closed).map((loan: any) => (
-                            <div key={loan.id} className="card flex items-center justify-between p-4 bg-slate-50">
+                            <div key={loan.id} className="card flex items-center justify-between p-4 bg-slate-50 relative group">
                                 <div className="flex items-center gap-3">
                                     <CheckCircle2 className="text-green-500" size={20} />
                                     <div>
@@ -164,6 +221,11 @@ export default function LoansPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className="font-bold text-sm">Rs. {parseFloat(loan.total_amount).toLocaleString()}</p>
+                                </div>
+                                <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
+                                    <button onClick={() => deleteLoan(loan.id)} className="p-1 text-red-500 hover:bg-red-500/10 rounded transition-colors">
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -176,7 +238,7 @@ export default function LoansPage() {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="card w-full max-w-md animate-fade-in max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2">
-                            <h2 className="text-2xl font-bold">Add Loan Record</h2>
+                            <h2 className="text-2xl font-bold">{editingLoan ? 'Edit Record' : 'Add Loan Record'}</h2>
                             <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -221,26 +283,6 @@ export default function LoansPage() {
                                 </select>
                             </div>
 
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                    <div className="w-full border-t border-border"></div>
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white dark:bg-slate-900 px-2 text-secondary">Or manual entry</span>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Person Name (Legacy)</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    placeholder="Who is involved?"
-                                    value={form.person_name}
-                                    onChange={e => setForm({ ...form, person_name: e.target.value })}
-                                    required={!form.contact}
-                                />
-                            </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Total Amount (Rs.)</label>
                                 <input
@@ -261,7 +303,9 @@ export default function LoansPage() {
                                     onChange={e => setForm({ ...form, description: e.target.value })}
                                 />
                             </div>
-                            <button type="submit" className="btn btn-primary w-full mt-4">Save Record</button>
+                            <button type="submit" className="btn btn-primary w-full mt-4">
+                                {editingLoan ? 'Update Record' : 'Save Record'}
+                            </button>
                         </form>
                     </div>
                 </div>
