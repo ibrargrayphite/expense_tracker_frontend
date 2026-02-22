@@ -98,9 +98,9 @@ export default function Dashboard() {
   const fetchData = async () => {
     try {
       const [accountsRes, loansRes, transactionsRes] = await Promise.all([
-        api.get('/accounts/'),
-        api.get('/loans/'),
-        api.get('/transactions/'),
+        api.get('accounts/'),
+        api.get('loans/'),
+        api.get('transactions/'),
       ]);
       setData({
         accounts: accountsRes.data,

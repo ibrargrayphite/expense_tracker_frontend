@@ -19,6 +19,17 @@ const BANK_OPTIONS = [
     'Meezan Bank',
 ];
 
+// Define background and text colors for each bank
+const BANK_COLORS: Record<string, { bg: string; text: string }> = {
+    "Cash": { bg: '#ff9100b9', text: '#4B2E05' }, // gold background with dark text
+    "JazzCash": { bg: '#FCDE05', text: '#000000' },
+    "EasyPaisa": { bg: '#B7D59E', text: '#1A3F00' },
+    "Nayapay": { bg: '#FF5018', text: '#FFFFFF' },
+    "SadaPay": { bg: '#01D3B1', text: '#000000' },
+    "Bank Alfalah": { bg: '#DA291C', text: '#FFFFFF' },
+    "Meezan Bank": { bg: '#701E7D', text: '#FFFFFF' },
+    "default": { bg: '#E5E7EB', text: '#111827' }, // gray fallback
+};
 
 interface Account {
     id: number;
@@ -259,7 +270,7 @@ export default function AccountsPage() {
                     {filteredAccounts.map((acc: Account) => (
                         <div key={acc.id} className="card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div className="flex items-center gap-4 w-full sm:w-auto">
-                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
+                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold shrink-0" style={{ backgroundColor: BANK_COLORS[acc.bank_name]?.bg || BANK_COLORS.default.bg, color: BANK_COLORS[acc.bank_name]?.text || BANK_COLORS.default.text }}>
                                     {acc.bank_name[0]}
                                 </div>
                                 <div className="flex-1 min-w-0">

@@ -28,23 +28,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const token = localStorage.getItem('access_token');
         if (token) {
-            try {
-                const decoded: any = jwtDecode(token);
-                // In a real app, you might want to fetch full user info here
-                setUser({ id: decoded.user_id, username: '', email: '' });
-            } catch (err) {
-                localStorage.removeItem('access_token');
-                localStorage.removeItem('refresh_token');
-            }
+            fetchUserProfile();
+        } else {
+            setLoading(false);
         }
-        setLoading(false);
     }, []);
+
+    const fetchUserProfile = async () => {
+        try {
+            const res = await api.get('users/me/');
+            setUser(res.data);
+        } catch (err) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const login = (access: string, refresh: string) => {
         localStorage.setItem('access_token', access);
         localStorage.setItem('refresh_token', refresh);
-        const decoded: any = jwtDecode(access);
-        setUser({ id: decoded.user_id, username: '', email: '' });
+        fetchUserProfile();
         router.push('/');
     };
 

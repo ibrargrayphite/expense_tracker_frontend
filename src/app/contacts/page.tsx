@@ -268,7 +268,7 @@ export default function ContactsPage() {
                         <div key={contact.id} className="card p-6 flex flex-col gap-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
+                                    <div className="w-12 h-12 rounded-2xl bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-blue-800 dark:text-blue-200 font-bold shrink-0">
                                         {contact.first_name[0]}{contact.last_name[0]}
                                     </div>
                                     <div>

@@ -6,6 +6,9 @@ import { ToastProvider } from '@/context/ToastContext';
 export const metadata: Metadata = {
   title: 'Xpense | Smart Expense Tracker',
   description: 'Track your expenses, loans, and bank accounts with ease.',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({
