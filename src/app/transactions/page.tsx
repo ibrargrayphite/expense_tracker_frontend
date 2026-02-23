@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, X, Search, Filter, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Plus, X, Search, Filter, Image as ImageIcon, Trash2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -46,6 +46,8 @@ interface Transaction {
     id: number;
     account: number;
     loan: number | null;
+    contact: number | null;
+    contact_name: string | null;
     amount: string;
     type: string;
     note: string;
@@ -241,6 +243,24 @@ export default function TransactionsPage() {
         }
     };
 
+    const handleExportCSV = async () => {
+        try {
+            const response = await api.get('transactions/download_csv/', {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'transactions_export.csv');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to export CSV', 'error');
+        }
+    };
+
     const getLoanDisplayName = (loan: any) => {
         if (loan.contact_name) return loan.contact_name;
         return loan.person_name || 'Unknown';
@@ -250,7 +270,9 @@ export default function TransactionsPage() {
 
     const filteredTransactions = data.transactions
         .filter(t => {
-            const matchesSearch = !search || t.note?.toLowerCase().includes(search.toLowerCase());
+            const matchesSearch = !search ||
+                t.note?.toLowerCase().includes(search.toLowerCase()) ||
+                t.contact_name?.toLowerCase().includes(search.toLowerCase());
             const matchesType = !filterType || t.type === filterType;
             const matchesAccount = !filterAccount || t.account === parseInt(filterAccount);
             const matchesFrom = !filterDateFrom || new Date(t.date) >= new Date(filterDateFrom);
@@ -276,9 +298,14 @@ export default function TransactionsPage() {
             <main className="max-w-6xl mx-auto px-4 mt-8 space-y-6 animate-fade-in">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h1 className="text-3xl font-bold">Transaction History</h1>
-                    <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
-                        <Plus size={20} /> Add Transaction
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={handleExportCSV} className="btn bg-emerald-500 hover:bg-emerald-600 text-white">
+                            <Download size={20} /> Export CSV
+                        </button>
+                        <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
+                            <Plus size={20} /> Add Transaction
+                        </button>
+                    </div>
                 </div>
 
                 {/* Modern Filter & Sort Bar */}
@@ -316,7 +343,7 @@ export default function TransactionsPage() {
                                     <input
                                         type="text"
                                         className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                                        placeholder="Search by note…"
+                                        placeholder="Note or contact name…"
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                     />
@@ -437,10 +464,15 @@ export default function TransactionsPage() {
                                     return (
                                         <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                                             <td className="p-4 text-sm font-medium whitespace-nowrap">
-                                                {format(new Date(t.date), 'MMM dd, yyyy')}
+                                                {format(new Date(t.date), 'MMM dd, yyyy, hh:mm a')}
                                             </td>
                                             <td className="p-4 text-sm font-medium">
                                                 {account ? `${account.bank_name} (${account.account_name})` : '-'}
+                                                {t.contact_name && (
+                                                    <span className="text-[10px] text-primary block mt-0.5">
+                                                        With: {t.contact_name}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="p-4">
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type)
@@ -503,7 +535,7 @@ export default function TransactionsPage() {
                                             </span>
                                         </div>
                                         <p className="text-xs text-secondary">
-                                            {format(new Date(t.date), 'MMM dd, yyyy')}
+                                            {format(new Date(t.date), 'MMM dd, yyyy, hh:mm a')}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -520,6 +552,11 @@ export default function TransactionsPage() {
                                     <div>
                                         <span className="text-secondary text-xs">Account: </span>
                                         <span className="font-medium">{account ? `${account.bank_name} (${account.account_name})` : '-'}</span>
+                                        {t.contact_name && (
+                                            <p className="text-xs text-primary font-bold mt-1">
+                                                Contact: {t.contact_name}
+                                            </p>
+                                        )}
                                     </div>
                                     {t.note && (
                                         <div>
