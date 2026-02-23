@@ -17,6 +17,7 @@ const TX_TYPES = [
     { value: 'REIMBURSEMENT', label: 'Lent Money Back (They pay me)' },
     { value: 'LOAN_TAKEN', label: 'Add to Loan Taken' },
     { value: 'MONEY_LENT', label: 'Lent New Money' },
+    { value: 'TRANSFER', label: 'Transfer' },
 ];
 
 interface Account {
@@ -53,6 +54,8 @@ interface Transaction {
     note: string;
     image: string | null;
     date: string;
+    to_account?: number;
+    to_contact_account?: number;
 }
 
 export default function TransactionsPage() {
@@ -87,7 +90,10 @@ export default function TransactionsPage() {
         amount: '',
         type: 'EXPENSE',
         note: '',
+        to_account: '',
+        to_contact_account: '',
     });
+    const [isTransferToSelf, setIsTransferToSelf] = useState(true);
     const [splits, setSplits] = useState<{ account: string; amount: string }[]>([]);
     const [isSplitEnabled, setIsSplitEnabled] = useState(false);
     const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
@@ -99,7 +105,7 @@ export default function TransactionsPage() {
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchData();
-    }, [user, loading]);
+    }, [user, loading, filterDateFrom, filterDateTo]);
 
     // Update total amount when splits change
     useEffect(() => {
@@ -111,8 +117,12 @@ export default function TransactionsPage() {
 
     const fetchData = async () => {
         try {
+            const params: any = {};
+            if (filterDateFrom) params.start_date = filterDateFrom;
+            if (filterDateTo) params.end_date = filterDateTo;
+
             const [txRes, accRes, loanRes, contactRes] = await Promise.all([
-                api.get('transactions/'),
+                api.get('transactions/', { params }),
                 api.get('accounts/'),
                 api.get('loans/'),
                 api.get('contacts/'),
@@ -147,7 +157,13 @@ export default function TransactionsPage() {
     };
 
     const getBalanceError = () => {
-        if (!['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type)) return null;
+        // Validation: From and To accounts cannot be the same for internal transfers
+        if (form.type === 'TRANSFER' && isTransferToSelf && form.account && form.to_account && form.account === form.to_account) {
+            return "From and To accounts cannot be the same.";
+        }
+
+        // Check if the transaction type requires balance validation
+        if (!['EXPENSE', 'REPAYMENT', 'MONEY_LENT', 'TRANSFER'].includes(form.type)) return null;
 
         if (isSplitEnabled) {
             for (const split of splits) {
@@ -163,6 +179,7 @@ export default function TransactionsPage() {
                 return `Amount exceeds balance in ${account.bank_name} (Rs. ${parseFloat(account.balance).toLocaleString()})`;
             }
         }
+
         return null;
     };
 
@@ -208,7 +225,8 @@ export default function TransactionsPage() {
             setSplits([]);
             setImage(null);
             setSelectedContactId('');
-            setForm({ ...form, amount: '', note: '', loan: '', contact: '' });
+            setForm({ ...form, amount: '', note: '', loan: '', contact: '', to_account: '', to_contact_account: '' });
+            setIsTransferToSelf(true);
             fetchData();
             showToast('Transaction recorded successfully!', 'success');
         } catch (err) {
@@ -245,7 +263,17 @@ export default function TransactionsPage() {
 
     const handleExportExcel = async () => {
         try {
+            const params: any = {};
+            if (filterDateFrom) params.start_date = filterDateFrom;
+            if (filterDateTo) params.end_date = filterDateTo;
+
+            // If no dates are selected, we want ALL transactions for export
+            if (!filterDateFrom && !filterDateTo) {
+                params.all = true;
+            }
+
             const response = await api.get('transactions/download_excel/', {
+                params,
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -498,7 +526,7 @@ export default function TransactionsPage() {
                                             </td>
                                             <td className={`p-4 text-sm font-bold text-right whitespace-nowrap ${['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? 'text-green-600' : 'text-red-600'
                                                 }`}>
-                                                {['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
+                                                {['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type) ? '+' : (t.type === 'TRANSFER' ? '→' : '-')} Rs. {parseFloat(t.amount).toLocaleString()}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <button onClick={() => setConfirmDeleteId(t.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-500/5 transition-all">
@@ -588,9 +616,9 @@ export default function TransactionsPage() {
             {/* Transaction Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto">
+                    <div className="card w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto font-sans">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">New Transaction</h2>
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">New Transaction</h2>
                             <button onClick={() => {
                                 setIsModalOpen(false);
                                 setSelectedContactId('');
@@ -609,62 +637,137 @@ export default function TransactionsPage() {
                                     </select>
                                 </div>
                                 <div className="flex flex-col justify-end">
-                                    <label className="flex items-center gap-2 cursor-pointer mb-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSplitEnabled}
-                                            onChange={(e) => {
-                                                setIsSplitEnabled(e.target.checked);
-                                                if (e.target.checked) {
-                                                    if (splits.length === 0) {
-                                                        setSplits([{ account: form.account, amount: form.amount || '' }, { account: '', amount: '' }]);
+                                    {form.type === 'TRANSFER' ? (
+                                        <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={isTransferToSelf}
+                                                onChange={(e) => {
+                                                    setIsTransferToSelf(e.target.checked);
+                                                    setForm(prev => ({ ...prev, to_account: '', to_contact_account: '', contact: '' }));
+                                                    setSelectedContactId('');
+                                                }}
+                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                            />
+                                            <span className="text-sm font-medium">Transfer to self?</span>
+                                        </label>
+                                    ) : (
+                                        <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSplitEnabled}
+                                                onChange={(e) => {
+                                                    setIsSplitEnabled(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        if (splits.length === 0) {
+                                                            setSplits([{ account: form.account, amount: form.amount || '' }, { account: '', amount: '' }]);
+                                                        }
+                                                        setIsSplitModalOpen(true);
                                                     }
-                                                    setIsSplitModalOpen(true);
-                                                }
-                                            }}
-                                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                        />
-                                        <span className="text-sm font-medium">Split across accounts?</span>
-                                    </label>
+                                                }}
+                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                            />
+                                            <span className="text-sm font-medium">Split across accounts?</span>
+                                        </label>
+                                    )}
                                 </div>
                             </div>
 
-                            {!isSplitEnabled ? (
-                                <div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className={form.type === 'TRANSFER' ? '' : 'col-span-2'}>
                                     <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium">Account</label>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsAccountModalOpen(true)}
-                                            className="text-[10px] text-primary font-bold hover:underline"
+                                        <label className="block text-sm font-medium">{form.type === 'TRANSFER' ? 'From' : 'Account'}</label>
+                                        {!isSplitEnabled && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAccountModalOpen(true)}
+                                                className="text-[10px] text-primary font-bold hover:underline"
+                                            >
+                                                + New
+                                            </button>
+                                        )}
+                                    </div>
+                                    {!isSplitEnabled ? (
+                                        <select
+                                            className="input-field"
+                                            value={form.account}
+                                            onChange={e => setForm({ ...form, account: e.target.value })}
+                                            required
                                         >
-                                            + New
-                                        </button>
-                                    </div>
-                                    <select
-                                        className="input-field"
-                                        value={form.account}
-                                        onChange={e => setForm({ ...form, account: e.target.value })}
-                                        required
-                                    >
-                                        {data.accounts.map((acc: any) => (
-                                            <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
-                                        ))}
-                                    </select>
+                                            <option value="">-- Choose Account --</option>
+                                            {data.accounts.map((acc: any) => (
+                                                <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-primary uppercase">Split Mode</span>
+                                                <span className="text-[10px] text-secondary">{splits.length} accounts</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsSplitModalOpen(true)}
+                                                className="btn btn-primary py-2 px-4 text-xs"
+                                            >
+                                                Edit
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-primary uppercase">Split Mode Active</span>
-                                        <span className="text-[10px] text-secondary">{splits.length} accounts selected</span>
+
+                                {form.type === 'TRANSFER' && isTransferToSelf && (
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">To Account</label>
+                                        <select
+                                            className="input-field"
+                                            value={form.to_account}
+                                            onChange={e => setForm({ ...form, to_account: e.target.value })}
+                                            required
+                                        >
+                                            <option value="">-- Choose Account --</option>
+                                            {data.accounts.map((acc: any) => (
+                                                <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsSplitModalOpen(true)}
-                                        className="btn btn-primary py-2 px-4 text-xs"
-                                    >
-                                        Configure Split
-                                    </button>
+                                )}
+                            </div>
+
+                            {form.type === 'TRANSFER' && !isTransferToSelf && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">To Contact</label>
+                                        <select
+                                            className="input-field"
+                                            value={selectedContactId}
+                                            onChange={e => {
+                                                setSelectedContactId(e.target.value);
+                                                setForm({ ...form, contact: e.target.value, to_contact_account: '' });
+                                            }}
+                                            required
+                                        >
+                                            <option value="">-- Choose Contact --</option>
+                                            {data.contacts.map((c: Contact) => (
+                                                <option key={c.id} value={c.id}>{c.full_name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Recipient Account</label>
+                                        <select
+                                            className={`input-field ${!selectedContactId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            value={form.to_contact_account}
+                                            onChange={e => setForm({ ...form, to_contact_account: e.target.value })}
+                                            required
+                                            disabled={!selectedContactId}
+                                        >
+                                            <option value="">-- Choose Account --</option>
+                                            {selectedContactId && (data.contacts.find(c => c.id === parseInt(selectedContactId)) as any)?.accounts.map((acc: any) => (
+                                                <option key={acc.id} value={acc.id}>{acc.account_name} ({acc.account_number})</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 
@@ -765,171 +868,175 @@ export default function TransactionsPage() {
             )}
 
             {/* Inline Account Modal */}
-            {isAccountModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-lg animate-fade-in shadow-2xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold">Quick Add Account</h2>
-                            <button onClick={() => setIsAccountModalOpen(false)}><X size={20} /></button>
-                        </div>
-                        <form onSubmit={handleAccountSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Bank / Platform</label>
-                                    <select
-                                        className="input-field"
-                                        value={accountForm.bank_name}
-                                        onChange={e => setAccountForm({ ...accountForm, bank_name: e.target.value })}
-                                    >
-                                        {BANK_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                    </select>
+            {
+                isAccountModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+                        <div className="card w-full max-w-lg animate-fade-in shadow-2xl">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold">Quick Add Account</h2>
+                                <button onClick={() => setIsAccountModalOpen(false)}><X size={20} /></button>
+                            </div>
+                            <form onSubmit={handleAccountSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Bank / Platform</label>
+                                        <select
+                                            className="input-field"
+                                            value={accountForm.bank_name}
+                                            onChange={e => setAccountForm({ ...accountForm, bank_name: e.target.value })}
+                                        >
+                                            {BANK_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Account Name</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="Personal, Work etc."
+                                            value={accountForm.account_name}
+                                            onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
                                 </div>
+
+                                {accountForm.bank_name !== 'Cash' && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-scale-in">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Account Number</label>
+                                            <input
+                                                type="text"
+                                                className="input-field"
+                                                placeholder="0300..."
+                                                value={accountForm.account_number}
+                                                onChange={e => setAccountForm({ ...accountForm, account_number: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">IBAN (Optional)</label>
+                                            <input
+                                                type="text"
+                                                className="input-field"
+                                                placeholder="PK..."
+                                                value={accountForm.iban}
+                                                onChange={e => setAccountForm({ ...accountForm, iban: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Account Name</label>
+                                    <label className="block text-sm font-medium mb-1">Initial Balance (Rs.)</label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         className="input-field"
-                                        placeholder="Personal, Work etc."
-                                        value={accountForm.account_name}
-                                        onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                        placeholder="0.00"
+                                        value={accountForm.balance}
+                                        onChange={e => setAccountForm({ ...accountForm, balance: e.target.value })}
                                         required
                                     />
                                 </div>
-                            </div>
 
-                            {accountForm.bank_name !== 'Cash' && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-scale-in">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Account Number</label>
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="0300..."
-                                            value={accountForm.account_number}
-                                            onChange={e => setAccountForm({ ...accountForm, account_number: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">IBAN (Optional)</label>
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="PK..."
-                                            value={accountForm.iban}
-                                            onChange={e => setAccountForm({ ...accountForm, iban: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Initial Balance (Rs.)</label>
-                                <input
-                                    type="number"
-                                    className="input-field"
-                                    placeholder="0.00"
-                                    value={accountForm.balance}
-                                    onChange={e => setAccountForm({ ...accountForm, balance: e.target.value })}
-                                    required
-                                />
-                            </div>
-
-                            <button type="submit" className="btn btn-primary w-full mt-4">Save & Select</button>
-                        </form>
+                                <button type="submit" className="btn btn-primary w-full mt-4">Save & Select</button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Inline Split Modal */}
-            {isSplitModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-md animate-fade-in shadow-2xl border-t-4 border-primary">
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h2 className="text-xl font-bold">Configure Splits</h2>
-                                <p className="text-xs text-secondary mt-1">Allocate amounts to different platforms</p>
+            {
+                isSplitModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+                        <div className="card w-full max-w-md animate-fade-in shadow-2xl border-t-4 border-primary">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 className="text-xl font-bold">Configure Splits</h2>
+                                    <p className="text-xs text-secondary mt-1">Allocate amounts to different platforms</p>
+                                </div>
+                                <button onClick={() => setIsSplitModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <button onClick={() => setIsSplitModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                                <X size={20} />
+                            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                {splits.map((split, index) => (
+                                    <div key={index} className="flex gap-2 items-start group">
+                                        <div className="flex-1 space-y-1">
+                                            <label className="text-[10px] font-bold text-secondary uppercase px-1">Account {index + 1}</label>
+                                            <select
+                                                className="input-field"
+                                                value={split.account}
+                                                onChange={e => handleSplitChange(index, 'account', e.target.value)}
+                                                required
+                                            >
+                                                <option value="">-- Choose Account --</option>
+                                                {data.accounts.map((acc: any) => (
+                                                    <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="w-32 space-y-1">
+                                            <label className="text-[10px] font-bold text-secondary uppercase px-1">Amount</label>
+                                            <input
+                                                type="number"
+                                                className={`input-field ${['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
+                                                    split.account &&
+                                                    parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0')
+                                                    ? 'ring-2 ring-red-500 border-red-500 bg-red-50 dark:bg-red-900/10' : ''
+                                                    }`}
+                                                placeholder="0.00"
+                                                value={split.amount}
+                                                onChange={e => handleSplitChange(index, 'amount', e.target.value)}
+                                                required
+                                            />
+                                            {['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
+                                                split.account &&
+                                                parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0') && (
+                                                    <p className="text-[9px] text-red-500 font-bold leading-tight">Exceeds Balance!</p>
+                                                )}
+                                        </div>
+                                        <div className="pt-6">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeSplit(index)}
+                                                disabled={splits.length <= 2}
+                                                className={`p-2 rounded-lg transition-all ${splits.length <= 2 ? 'opacity-0' : 'text-slate-400 hover:text-red-500 hover:bg-red-500/5'}`}
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={addSplit}
+                                className="w-full py-3 mt-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all mb-6"
+                            >
+                                + Add Another Account
+                            </button>
+
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl space-y-2">
+                                <div className="flex justify-between text-sm font-medium">
+                                    <span className="text-secondary">Summary (Sum of Splits)</span>
+                                    <span className="font-bold">Rs. {splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0).toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setIsSplitModalOpen(false)}
+                                className="btn btn-primary w-full mt-6 py-4 shadow-lg shadow-primary/20"
+                            >
+                                Done & Update Total
                             </button>
                         </div>
-                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                            {splits.map((split, index) => (
-                                <div key={index} className="flex gap-2 items-start group">
-                                    <div className="flex-1 space-y-1">
-                                        <label className="text-[10px] font-bold text-secondary uppercase px-1">Account {index + 1}</label>
-                                        <select
-                                            className="input-field"
-                                            value={split.account}
-                                            onChange={e => handleSplitChange(index, 'account', e.target.value)}
-                                            required
-                                        >
-                                            <option value="">-- Choose Account --</option>
-                                            {data.accounts.map((acc: any) => (
-                                                <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="w-32 space-y-1">
-                                        <label className="text-[10px] font-bold text-secondary uppercase px-1">Amount</label>
-                                        <input
-                                            type="number"
-                                            className={`input-field ${['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
-                                                split.account &&
-                                                parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0')
-                                                ? 'ring-2 ring-red-500 border-red-500 bg-red-50 dark:bg-red-900/10' : ''
-                                                }`}
-                                            placeholder="0.00"
-                                            value={split.amount}
-                                            onChange={e => handleSplitChange(index, 'amount', e.target.value)}
-                                            required
-                                        />
-                                        {['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
-                                            split.account &&
-                                            parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0') && (
-                                                <p className="text-[9px] text-red-500 font-bold leading-tight">Exceeds Balance!</p>
-                                            )}
-                                    </div>
-                                    <div className="pt-6">
-                                        <button
-                                            type="button"
-                                            onClick={() => removeSplit(index)}
-                                            disabled={splits.length <= 2}
-                                            className={`p-2 rounded-lg transition-all ${splits.length <= 2 ? 'opacity-0' : 'text-slate-400 hover:text-red-500 hover:bg-red-500/5'}`}
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={addSplit}
-                            className="w-full py-3 mt-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all mb-6"
-                        >
-                            + Add Another Account
-                        </button>
-
-                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl space-y-2">
-                            <div className="flex justify-between text-sm font-medium">
-                                <span className="text-secondary">Summary (Sum of Splits)</span>
-                                <span className="font-bold">Rs. {splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0).toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setIsSplitModalOpen(false)}
-                            className="btn btn-primary w-full mt-6 py-4 shadow-lg shadow-primary/20"
-                        >
-                            Done & Update Total
-                        </button>
                     </div>
-                </div>
-            )}
+                )
+            }
             <ConfirmModal
                 isOpen={confirmDeleteId !== null}
                 title="Delete Transaction"
@@ -940,25 +1047,27 @@ export default function TransactionsPage() {
             />
 
             {/* Image Preview Modal */}
-            {previewImage && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-                    <div className="relative max-w-4xl w-full animate-fade-in group">
-                        <button
-                            onClick={() => setPreviewImage(null)}
-                            className="absolute -top-12 right-0 text-white hover:text-primary transition-colors flex items-center gap-2 font-bold uppercase tracking-widest text-xs"
-                        >
-                            Close <X size={20} />
-                        </button>
-                        <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-2xl overflow-hidden ring-4 ring-white/10">
-                            <img
-                                src={previewImage}
-                                alt="Transaction Attachment"
-                                className="w-full h-auto max-h-[80vh] object-contain rounded-xl"
-                            />
+            {
+                previewImage && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+                        <div className="relative max-w-4xl w-full animate-fade-in group">
+                            <button
+                                onClick={() => setPreviewImage(null)}
+                                className="absolute -top-12 right-0 text-white hover:text-primary transition-colors flex items-center gap-2 font-bold uppercase tracking-widest text-xs"
+                            >
+                                Close <X size={20} />
+                            </button>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-2xl overflow-hidden ring-4 ring-white/10">
+                                <img
+                                    src={previewImage}
+                                    alt="Transaction Attachment"
+                                    className="w-full h-auto max-h-[80vh] object-contain rounded-xl"
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
