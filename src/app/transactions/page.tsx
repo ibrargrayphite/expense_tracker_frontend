@@ -94,7 +94,7 @@ export default function TransactionsPage() {
         to_contact_account: '',
     });
     const [isTransferToSelf, setIsTransferToSelf] = useState(true);
-    const [splits, setSplits] = useState<{ account: string; amount: string }[]>([]);
+    const [splits, setSplits] = useState<{ account: string; amount: string; type: string; contact: string; loan: string }[]>([]);
     const [isSplitEnabled, setIsSplitEnabled] = useState(false);
     const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
     const [accountForm, setAccountForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '0' });
@@ -142,7 +142,7 @@ export default function TransactionsPage() {
     };
 
     const addSplit = () => {
-        setSplits([...splits, { account: '', amount: '' }]);
+        setSplits([...splits, { account: '', amount: '', type: form.type, contact: '', loan: '' }]);
     };
 
     const removeSplit = (index: number) => {
@@ -166,11 +166,17 @@ export default function TransactionsPage() {
         if (!['EXPENSE', 'REPAYMENT', 'MONEY_LENT', 'TRANSFER'].includes(form.type)) return null;
 
         if (isSplitEnabled) {
+            // Group splits by account and sum their amounts
+            const totalsByAccount: { [key: string]: number } = {};
             for (const split of splits) {
                 if (!split.account || !split.amount) continue;
-                const account = data.accounts.find(a => a.id === parseInt(split.account));
-                if (account && parseFloat(split.amount) > parseFloat(account.balance)) {
-                    return `Split amount for ${account.bank_name} exceeds balance (Rs. ${parseFloat(account.balance).toLocaleString()})`;
+                totalsByAccount[split.account] = (totalsByAccount[split.account] || 0) + parseFloat(split.amount);
+            }
+
+            for (const accId in totalsByAccount) {
+                const account = data.accounts.find(a => a.id === parseInt(accId));
+                if (account && totalsByAccount[accId] > parseFloat(account.balance)) {
+                    return `Total split amount for ${account.bank_name} (Rs. ${totalsByAccount[accId].toLocaleString()}) exceeds balance (Rs. ${parseFloat(account.balance).toLocaleString()})`;
                 }
             }
         } else if (form.account && form.amount) {
@@ -660,7 +666,10 @@ export default function TransactionsPage() {
                                                     setIsSplitEnabled(e.target.checked);
                                                     if (e.target.checked) {
                                                         if (splits.length === 0) {
-                                                            setSplits([{ account: form.account, amount: form.amount || '' }, { account: '', amount: '' }]);
+                                                            setSplits([
+                                                                { account: form.account, amount: form.amount || '', type: form.type, contact: form.contact, loan: form.loan },
+                                                                { account: '', amount: '', type: form.type, contact: '', loan: '' }
+                                                            ]);
                                                         }
                                                         setIsSplitModalOpen(true);
                                                     }
@@ -962,51 +971,126 @@ export default function TransactionsPage() {
                             </div>
                             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {splits.map((split, index) => (
-                                    <div key={index} className="flex gap-2 items-start group">
-                                        <div className="flex-1 space-y-1">
-                                            <label className="text-[10px] font-bold text-secondary uppercase px-1">Account {index + 1}</label>
-                                            <select
-                                                className="input-field"
-                                                value={split.account}
-                                                onChange={e => handleSplitChange(index, 'account', e.target.value)}
-                                                required
-                                            >
-                                                <option value="">-- Choose Account --</option>
-                                                {data.accounts.map((acc: any) => (
-                                                    <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="w-32 space-y-1">
-                                            <label className="text-[10px] font-bold text-secondary uppercase px-1">Amount</label>
-                                            <input
-                                                type="number"
-                                                className={`input-field ${['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
-                                                    split.account &&
-                                                    parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0')
-                                                    ? 'ring-2 ring-red-500 border-red-500 bg-red-50 dark:bg-red-900/10' : ''
-                                                    }`}
-                                                placeholder="0.00"
-                                                value={split.amount}
-                                                onChange={e => handleSplitChange(index, 'amount', e.target.value)}
-                                                required
-                                            />
-                                            {['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(form.type) &&
-                                                split.account &&
-                                                parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0') && (
-                                                    <p className="text-[9px] text-red-500 font-bold leading-tight">Exceeds Balance!</p>
-                                                )}
-                                        </div>
-                                        <div className="pt-6">
+                                    <div key={index} className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Activity {index + 1}</span>
                                             <button
                                                 type="button"
                                                 onClick={() => removeSplit(index)}
                                                 disabled={splits.length <= 2}
-                                                className={`p-2 rounded-lg transition-all ${splits.length <= 2 ? 'opacity-0' : 'text-slate-400 hover:text-red-500 hover:bg-red-500/5'}`}
+                                                className={`text-slate-400 hover:text-red-500 transition-colors ${splits.length <= 2 ? 'invisible' : ''}`}
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-secondary uppercase px-1">Source Account</label>
+                                                <select
+                                                    className="input-field h-10 text-sm"
+                                                    value={split.account}
+                                                    onChange={e => handleSplitChange(index, 'account', e.target.value)}
+                                                    required
+                                                >
+                                                    <option value="">-- Choose Account --</option>
+                                                    {data.accounts.map((acc: any) => (
+                                                        <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-secondary uppercase px-1">Activity Type</label>
+                                                <select
+                                                    className="input-field h-10 text-sm"
+                                                    value={split.type}
+                                                    onChange={e => handleSplitChange(index, 'type', e.target.value)}
+                                                    required
+                                                >
+                                                    {TX_TYPES.filter(t => t.value !== 'TRANSFER').map(t => (
+                                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-secondary uppercase px-1">Amount (Rs.)</label>
+                                                <input
+                                                    type="number"
+                                                    className={`input-field h-10 text-sm ${['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) &&
+                                                        split.account &&
+                                                        parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0')
+                                                        ? 'ring-2 ring-red-500 border-red-500 bg-red-50 dark:bg-red-900/10' : ''
+                                                        }`}
+                                                    placeholder="0.00"
+                                                    value={split.amount}
+                                                    onChange={e => handleSplitChange(index, 'amount', e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+
+                                            {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(split.type) ? (
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-secondary uppercase px-1">Contact</label>
+                                                    <select
+                                                        className="input-field h-10 text-sm"
+                                                        value={split.contact}
+                                                        onChange={e => {
+                                                            handleSplitChange(index, 'contact', e.target.value);
+                                                            handleSplitChange(index, 'loan', '');
+                                                        }}
+                                                        required
+                                                    >
+                                                        <option value="">-- Choose --</option>
+                                                        {data.contacts.map((c: Contact) => (
+                                                            <option key={c.id} value={c.id}>{c.full_name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col justify-end">
+                                                    {split.account && ['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) && (
+                                                        <p className="text-[10px] text-secondary text-right px-1">
+                                                            Available: Rs. {parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0').toLocaleString()}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {['REPAYMENT', 'REIMBURSEMENT'].includes(split.type) && split.contact && (
+                                            <div className="space-y-1 animate-slide-up">
+                                                <label className="text-[10px] font-bold text-secondary uppercase px-1">Link to Loan</label>
+                                                <select
+                                                    className="input-field h-10 text-sm"
+                                                    value={split.loan}
+                                                    onChange={e => handleSplitChange(index, 'loan', e.target.value)}
+                                                    required
+                                                >
+                                                    <option value="">-- Choose Loan Record --</option>
+                                                    {data.loans
+                                                        .filter((l: Loan) =>
+                                                            (split.type === 'REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT')
+                                                            && !l.is_closed
+                                                            && (l.contact === parseInt(split.contact))
+                                                        )
+                                                        .map((l: Loan) => (
+                                                            <option key={l.id} value={l.id}>{getLoanDisplayName(l)} (Rem: Rs. {parseFloat(l.remaining_amount).toLocaleString()})</option>
+                                                        ))
+                                                    }
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) &&
+                                            split.account &&
+                                            parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0') && (
+                                                <p className="text-[10px] text-red-500 font-bold px-1 italic">
+                                                    ⚠ This amount exceeds the current balance in {data.accounts.find(a => a.id === parseInt(split.account))?.bank_name}!
+                                                </p>
+                                            )}
                                     </div>
                                 ))}
                             </div>
