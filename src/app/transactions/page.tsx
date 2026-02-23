@@ -151,9 +151,11 @@ export default function TransactionsPage() {
     };
 
     const handleSplitChange = (index: number, field: string, value: string) => {
-        const newSplits = [...splits];
-        newSplits[index] = { ...newSplits[index], [field]: value };
-        setSplits(newSplits);
+        setSplits(prev => {
+            const newSplits = [...prev];
+            newSplits[index] = { ...newSplits[index], [field]: value };
+            return newSplits;
+        });
     };
 
     const getBalanceError = () => {
@@ -724,106 +726,110 @@ export default function TransactionsPage() {
                                         </div>
                                     )}
                                 </div>
-
-                                {form.type === 'TRANSFER' && isTransferToSelf && (
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">To Account</label>
-                                        <select
-                                            className="input-field"
-                                            value={form.to_account}
-                                            onChange={e => setForm({ ...form, to_account: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">-- Choose Account --</option>
-                                            {data.accounts.map((acc: any) => (
-                                                <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
                             </div>
 
-                            {form.type === 'TRANSFER' && !isTransferToSelf && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">To Contact</label>
-                                        <select
-                                            className="input-field"
-                                            value={selectedContactId}
-                                            onChange={e => {
-                                                setSelectedContactId(e.target.value);
-                                                setForm({ ...form, contact: e.target.value, to_contact_account: '' });
-                                            }}
-                                            required
-                                        >
-                                            <option value="">-- Choose Contact --</option>
-                                            {data.contacts.map((c: Contact) => (
-                                                <option key={c.id} value={c.id}>{c.full_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Recipient Account</label>
-                                        <select
-                                            className={`input-field ${!selectedContactId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            value={form.to_contact_account}
-                                            onChange={e => setForm({ ...form, to_contact_account: e.target.value })}
-                                            required
-                                            disabled={!selectedContactId}
-                                        >
-                                            <option value="">-- Choose Account --</option>
-                                            {selectedContactId && (data.contacts.find(c => c.id === parseInt(selectedContactId)) as any)?.accounts.map((acc: any) => (
-                                                <option key={acc.id} value={acc.id}>{acc.account_name} ({acc.account_number})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className={['LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) ? 'col-span-2' : ''}>
-                                        <label className="block text-sm font-medium mb-1">Select Contact</label>
-                                        <select
-                                            className="input-field"
-                                            value={form.contact || selectedContactId}
-                                            onChange={e => {
-                                                setSelectedContactId(e.target.value);
-                                                setForm({ ...form, contact: e.target.value, loan: '' });
-                                            }}
-                                            required
-                                        >
-                                            <option value="">-- Choose Contact --</option>
-                                            {data.contacts.map((c: Contact) => (
-                                                <option key={c.id} value={c.id}>{c.full_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    {['REPAYMENT', 'REIMBURSEMENT'].includes(form.type) && (
+                            {!isSplitEnabled && (
+                                <>
+                                    {form.type === 'TRANSFER' && isTransferToSelf && (
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Select Loan Record</label>
+                                            <label className="block text-sm font-medium mb-1">To Account</label>
                                             <select
-                                                className={`input-field ${!selectedContactId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                value={form.loan}
-                                                onChange={e => setForm({ ...form, loan: e.target.value })}
+                                                className="input-field"
+                                                value={form.to_account}
+                                                onChange={e => setForm({ ...form, to_account: e.target.value })}
                                                 required
-                                                disabled={!selectedContactId}
                                             >
-                                                <option value="">-- Choose Loan --</option>
-                                                {data.loans
-                                                    .filter((l: Loan) =>
-                                                        (form.type === 'REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT')
-                                                        && !l.is_closed
-                                                        && (l.contact === parseInt(selectedContactId))
-                                                    )
-                                                    .map((l: Loan) => (
-                                                        <option key={l.id} value={l.id}>{getLoanDisplayName(l)} (Rem: Rs. {l.remaining_amount})</option>
-                                                    ))
-                                                }
+                                                <option value="">-- Choose Account --</option>
+                                                {data.accounts.map((acc: any) => (
+                                                    <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     )}
-                                </div>
+
+                                    {form.type === 'TRANSFER' && !isTransferToSelf && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">To Contact</label>
+                                                <select
+                                                    className="input-field"
+                                                    value={selectedContactId}
+                                                    onChange={e => {
+                                                        setSelectedContactId(e.target.value);
+                                                        setForm({ ...form, contact: e.target.value, to_contact_account: '' });
+                                                    }}
+                                                    required
+                                                >
+                                                    <option value="">-- Choose Contact --</option>
+                                                    {data.contacts.map((c: Contact) => (
+                                                        <option key={c.id} value={c.id}>{c.full_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Recipient Account</label>
+                                                <select
+                                                    className={`input-field ${!selectedContactId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    value={form.to_contact_account}
+                                                    onChange={e => setForm({ ...form, to_contact_account: e.target.value })}
+                                                    required
+                                                    disabled={!selectedContactId}
+                                                >
+                                                    <option value="">-- Choose Account --</option>
+                                                    {selectedContactId && (data.contacts.find(c => c.id === parseInt(selectedContactId)) as any)?.accounts.map((acc: any) => (
+                                                        <option key={acc.id} value={acc.id}>{acc.account_name} ({acc.account_number})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className={['LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) ? 'col-span-2' : ''}>
+                                                <label className="block text-sm font-medium mb-1">Select Contact</label>
+                                                <select
+                                                    className="input-field"
+                                                    value={form.contact || selectedContactId}
+                                                    onChange={e => {
+                                                        setSelectedContactId(e.target.value);
+                                                        setForm({ ...form, contact: e.target.value, loan: '' });
+                                                    }}
+                                                    required
+                                                >
+                                                    <option value="">-- Choose Contact --</option>
+                                                    {data.contacts.map((c: Contact) => (
+                                                        <option key={c.id} value={c.id}>{c.full_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {['REPAYMENT', 'REIMBURSEMENT'].includes(form.type) && (
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Select Loan Record</label>
+                                                    <select
+                                                        className={`input-field ${!selectedContactId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        value={form.loan}
+                                                        onChange={e => setForm({ ...form, loan: e.target.value })}
+                                                        required
+                                                        disabled={!selectedContactId}
+                                                    >
+                                                        <option value="">-- Choose Loan --</option>
+                                                        {data.loans
+                                                            .filter((l: Loan) =>
+                                                                (form.type === 'REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT')
+                                                                && !l.is_closed
+                                                                && (l.contact === parseInt(selectedContactId))
+                                                            )
+                                                            .map((l: Loan) => (
+                                                                <option key={l.id} value={l.id}>{getLoanDisplayName(l)} (Rem: Rs. {l.remaining_amount})</option>
+                                                            ))
+                                                        }
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             <div>
@@ -959,7 +965,7 @@ export default function TransactionsPage() {
             {
                 isSplitModalOpen && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
-                        <div className="card w-full max-w-md animate-fade-in shadow-2xl border-t-4 border-primary">
+                        <div className="card w-full max-w-3xl animate-fade-in shadow-2xl border-t-4 border-primary">
                             <div className="flex justify-between items-center mb-6">
                                 <div>
                                     <h2 className="text-xl font-bold">Configure Splits</h2>
@@ -971,24 +977,30 @@ export default function TransactionsPage() {
                             </div>
                             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {splits.map((split, index) => (
-                                    <div key={index} className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Activity {index + 1}</span>
+                                    <div key={index} className="p-5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4 hover:border-primary/30 transition-colors shadow-sm">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
+                                                    {index + 1}
+                                                </div>
+                                                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Transaction Component</span>
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={() => removeSplit(index)}
                                                 disabled={splits.length <= 2}
-                                                className={`text-slate-400 hover:text-red-500 transition-colors ${splits.length <= 2 ? 'invisible' : ''}`}
+                                                className={`text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-all ${splits.length <= 2 ? 'invisible' : ''}`}
                                             >
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {/* Primary Inputs Row */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-secondary uppercase px-1">Source Account</label>
                                                 <select
-                                                    className="input-field h-10 text-sm"
+                                                    className="input-field h-10 text-sm bg-white dark:bg-slate-900"
                                                     value={split.account}
                                                     onChange={e => handleSplitChange(index, 'account', e.target.value)}
                                                     required
@@ -998,11 +1010,16 @@ export default function TransactionsPage() {
                                                         <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_name}</option>
                                                     ))}
                                                 </select>
+                                                {split.account && (
+                                                    <p className="text-[9px] text-secondary px-1 mt-0.5">
+                                                        Bal: Rs. {parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0').toLocaleString()}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-secondary uppercase px-1">Activity Type</label>
                                                 <select
-                                                    className="input-field h-10 text-sm"
+                                                    className="input-field h-10 text-sm bg-white dark:bg-slate-900"
                                                     value={split.type}
                                                     onChange={e => handleSplitChange(index, 'type', e.target.value)}
                                                     required
@@ -1012,14 +1029,11 @@ export default function TransactionsPage() {
                                                     ))}
                                                 </select>
                                             </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-secondary uppercase px-1">Amount (Rs.)</label>
                                                 <input
                                                     type="number"
-                                                    className={`input-field h-10 text-sm ${['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) &&
+                                                    className={`input-field h-10 text-sm bg-white dark:bg-slate-900 ${['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) &&
                                                         split.account &&
                                                         parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0')
                                                         ? 'ring-2 ring-red-500 border-red-500 bg-red-50 dark:bg-red-900/10' : ''
@@ -1029,13 +1043,23 @@ export default function TransactionsPage() {
                                                     onChange={e => handleSplitChange(index, 'amount', e.target.value)}
                                                     required
                                                 />
+                                                {['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) &&
+                                                    split.account &&
+                                                    parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0') && (
+                                                        <p className="text-[9px] text-red-500 font-bold px-1 mt-0.5 italic animate-pulse">
+                                                            ⚠ Insufficient Balance
+                                                        </p>
+                                                    )}
                                             </div>
+                                        </div>
 
-                                            {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(split.type) ? (
+                                        {/* Activity-Specific Inputs Row */}
+                                        {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(split.type) && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200/50 dark:border-slate-700/50 animate-slide-up">
                                                 <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-secondary uppercase px-1">Contact</label>
+                                                    <label className="text-[10px] font-bold text-secondary uppercase px-1">Contact Person</label>
                                                     <select
-                                                        className="input-field h-10 text-sm"
+                                                        className="input-field h-10 text-sm bg-white dark:bg-slate-900"
                                                         value={split.contact}
                                                         onChange={e => {
                                                             handleSplitChange(index, 'contact', e.target.value);
@@ -1043,54 +1067,45 @@ export default function TransactionsPage() {
                                                         }}
                                                         required
                                                     >
-                                                        <option value="">-- Choose --</option>
+                                                        <option value="">-- Select Contact --</option>
                                                         {data.contacts.map((c: Contact) => (
                                                             <option key={c.id} value={c.id}>{c.full_name}</option>
                                                         ))}
                                                     </select>
                                                 </div>
-                                            ) : (
-                                                <div className="flex flex-col justify-end">
-                                                    {split.account && ['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) && (
-                                                        <p className="text-[10px] text-secondary text-right px-1">
-                                                            Available: Rs. {parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0').toLocaleString()}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {['REPAYMENT', 'REIMBURSEMENT'].includes(split.type) && split.contact && (
-                                            <div className="space-y-1 animate-slide-up">
-                                                <label className="text-[10px] font-bold text-secondary uppercase px-1">Link to Loan</label>
-                                                <select
-                                                    className="input-field h-10 text-sm"
-                                                    value={split.loan}
-                                                    onChange={e => handleSplitChange(index, 'loan', e.target.value)}
-                                                    required
-                                                >
-                                                    <option value="">-- Choose Loan Record --</option>
-                                                    {data.loans
-                                                        .filter((l: Loan) =>
-                                                            (split.type === 'REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT')
-                                                            && !l.is_closed
-                                                            && (l.contact === parseInt(split.contact))
-                                                        )
-                                                        .map((l: Loan) => (
-                                                            <option key={l.id} value={l.id}>{getLoanDisplayName(l)} (Rem: Rs. {parseFloat(l.remaining_amount).toLocaleString()})</option>
-                                                        ))
-                                                    }
-                                                </select>
+                                                {['REPAYMENT', 'REIMBURSEMENT'].includes(split.type) ? (
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-secondary uppercase px-1">Link to Loan Record</label>
+                                                        <select
+                                                            className="input-field h-10 text-sm bg-white dark:bg-slate-900"
+                                                            value={split.loan}
+                                                            onChange={e => handleSplitChange(index, 'loan', e.target.value)}
+                                                            required
+                                                            disabled={!split.contact}
+                                                        >
+                                                            <option value="">-- Choose Loan --</option>
+                                                            {split.contact && data.loans
+                                                                .filter((l: Loan) =>
+                                                                    (split.type === 'REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT')
+                                                                    && !l.is_closed
+                                                                    && (l.contact === parseInt(split.contact))
+                                                                )
+                                                                .map((l: Loan) => (
+                                                                    <option key={l.id} value={l.id}>{getLoanDisplayName(l)} (Rem: Rs. {parseFloat(l.remaining_amount).toLocaleString()})</option>
+                                                                ))
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col justify-end pb-2">
+                                                        <p className="text-[10px] text-primary italic px-1">
+                                                            {split.type === 'LOAN_TAKEN' ? 'Will create/update a Debt record for this contact.' : 'Will create/update a Lent record for this contact.'}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
-
-                                        {['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(split.type) &&
-                                            split.account &&
-                                            parseFloat(split.amount || '0') > parseFloat(data.accounts.find(a => a.id === parseInt(split.account))?.balance || '0') && (
-                                                <p className="text-[10px] text-red-500 font-bold px-1 italic">
-                                                    ⚠ This amount exceeds the current balance in {data.accounts.find(a => a.id === parseInt(split.account))?.bank_name}!
-                                                </p>
-                                            )}
                                     </div>
                                 ))}
                             </div>
