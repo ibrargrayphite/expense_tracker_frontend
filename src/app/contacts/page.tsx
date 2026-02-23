@@ -400,8 +400,8 @@ export default function ContactsPage() {
                                             <HandCoins size={14} className="text-orange-500" /> Loans & Lents
                                         </h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {contact.loans && contact.loans.length > 0 ? (
-                                                contact.loans.map((loan) => (
+                                            {contact.loans && contact.loans.filter((loan) => !loan.is_closed).length > 0 ? (
+                                                contact.loans.filter((loan) => !loan.is_closed).map((loan) => (
                                                     <div key={loan.id} className={`p-3 rounded-xl border ${loan.is_closed ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-white dark:bg-slate-800 border-orange-100 dark:border-orange-900/30 shadow-sm'}`}>
                                                         <div className="flex items-center justify-between mb-1">
                                                             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${loan.type === 'TAKEN' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'}`}>
