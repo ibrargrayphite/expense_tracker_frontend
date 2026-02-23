@@ -334,7 +334,7 @@ export default function AccountsPage() {
                                         </h4>
                                         <div className="space-y-2">
                                             {acc.transactions && acc.transactions.length > 0 ? (
-                                                acc.transactions.map((t) => (
+                                                acc.transactions.slice(0, 5).map((t) => (
                                                     <div key={t.id} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 shadow-sm transition-all hover:translate-x-1">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'

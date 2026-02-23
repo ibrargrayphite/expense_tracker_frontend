@@ -428,7 +428,7 @@ export default function ContactsPage() {
                                         </h4>
                                         <div className="space-y-2">
                                             {contact.transactions && contact.transactions.length > 0 ? (
-                                                contact.transactions.map((t) => (
+                                                contact.transactions.slice(0, 5).map((t) => (
                                                     <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
