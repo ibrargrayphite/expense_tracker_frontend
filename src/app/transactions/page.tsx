@@ -243,21 +243,21 @@ export default function TransactionsPage() {
         }
     };
 
-    const handleExportCSV = async () => {
+    const handleExportExcel = async () => {
         try {
-            const response = await api.get('transactions/download_csv/', {
+            const response = await api.get('transactions/download_excel/', {
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', 'transactions_export.csv');
+            link.setAttribute('download', 'transactions_export.xlsx');
             document.body.appendChild(link);
             link.click();
             link.remove();
         } catch (err) {
             console.error(err);
-            showToast('Failed to export CSV', 'error');
+            showToast('Failed to export Excel', 'error');
         }
     };
 
@@ -299,8 +299,8 @@ export default function TransactionsPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h1 className="text-3xl font-bold">Transaction History</h1>
                     <div className="flex items-center gap-2">
-                        <button onClick={handleExportCSV} className="btn bg-emerald-500 hover:bg-emerald-600 text-white">
-                            <Download size={20} /> Export CSV
+                        <button onClick={handleExportExcel} className="btn bg-emerald-500 hover:bg-emerald-600 text-white">
+                            <Download size={20} /> Export Excel
                         </button>
                         <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
                             <Plus size={20} /> Add Transaction
