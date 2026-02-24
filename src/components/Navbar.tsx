@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, Wallet, HandCoins, BookUser, History, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Wallet, HandCoins, BookUser, History, LogOut, Menu, X, Tags } from 'lucide-react';
 
 const NAV_LINKS = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/accounts', label: 'Accounts', icon: Wallet },
     { href: '/loans', label: 'Loans', icon: HandCoins },
     { href: '/contacts', label: 'Contacts', icon: BookUser },
+    { href: '/categories', label: 'Categories', icon: Tags },
     { href: '/transactions', label: 'History', icon: History },
 ];
 

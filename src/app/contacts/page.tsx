@@ -37,10 +37,10 @@ interface Loan {
 
 interface Transaction {
     id: number;
-    amount: string;
-    type: 'INCOME' | 'EXPENSE' | 'LOAN_TAKEN' | 'MONEY_LENT' | 'REPAYMENT' | 'REIMBURSEMENT';
+    total_amount: string;
     note: string;
     date: string;
+    accounts: { splits: { type: string; amount: string }[] }[];
 }
 
 interface Contact {
@@ -428,30 +428,35 @@ export default function ContactsPage() {
                                         </h4>
                                         <div className="space-y-2">
                                             {contact.transactions && contact.transactions.length > 0 ? (
-                                                contact.transactions.slice(0, 5).map((t) => (
-                                                    <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
-                                                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
-                                                                : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
+                                                contact.transactions.slice(0, 5).map((t) => {
+                                                    const mainSplit = t.accounts[0]?.splits[0];
+                                                    const type = mainSplit?.type || 'EXPENSE';
+                                                    const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(type);
+                                                    return (
+                                                        <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${isIncome
+                                                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
+                                                                    : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
+                                                                    }`}>
+                                                                    {type === 'INCOME' ? 'IN' : type === 'EXPENSE' ? 'EX' : type === 'LOAN_TAKEN' ? 'LT' : type === 'MONEY_LENT' ? 'ML' : type === 'REPAYMENT' ? 'RP' : 'RB'}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[13px] font-bold">{t.note || type.replace('_', ' ')}</p>
+                                                                    <p className="text-[9px] text-secondary font-medium">
+                                                                        {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <p className={`text-[13px] font-black ${isIncome
+                                                                ? 'text-emerald-500'
+                                                                : 'text-rose-500'
                                                                 }`}>
-                                                                {t.type === 'INCOME' ? 'IN' : t.type === 'EXPENSE' ? 'EX' : t.type === 'LOAN_TAKEN' ? 'LT' : t.type === 'MONEY_LENT' ? 'ML' : t.type === 'REPAYMENT' ? 'RP' : 'RB'}
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-[13px] font-bold">{t.note || t.type.replace('_', ' ')}</p>
-                                                                <p className="text-[9px] text-secondary font-medium">
-                                                                    {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                                </p>
-                                                            </div>
+                                                                {isIncome ? '+' : '-'} Rs. {parseFloat(t.total_amount).toLocaleString()}
+                                                            </p>
                                                         </div>
-                                                        <p className={`text-[13px] font-black ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
-                                                            ? 'text-emerald-500'
-                                                            : 'text-rose-500'
-                                                            }`}>
-                                                            {t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN' ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
-                                                        </p>
-                                                    </div>
-                                                ))
+                                                    );
+                                                })
                                             ) : (
                                                 <div className="text-center py-4 text-[11px] text-secondary italic opacity-60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                                                     No activity history.

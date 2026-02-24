@@ -53,11 +53,11 @@ interface Loan {
 
 interface Transaction {
   id: number;
-  amount: string;
-  type: string;
+  total_amount: string;
+  type?: string; // Type might be nested now, but for simple display we can use this if available
   note: string;
   date: string;
-  account: number;
+  accounts: { account: number; bank_name: string; splits: { type: string; amount: string }[] }[];
 }
 
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
@@ -130,13 +130,17 @@ export default function Dashboard() {
       new Date(t.date) >= thirtyDaysAgo
     );
 
-    const totalIncome = recentTransactions
-      .filter(t => ['INCOME', 'REIMBURSEMENT'].includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    let totalIncome = 0;
+    let totalExpenses = 0;
 
-    const totalExpenses = recentTransactions
-      .filter(t => ['EXPENSE', 'REPAYMENT'].includes(t.type))
-      .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    recentTransactions.forEach(t => {
+      t.accounts.forEach(acc => {
+        acc.splits.forEach(s => {
+          if (['INCOME', 'REIMBURSEMENT'].includes(s.type)) totalIncome += parseFloat(s.amount);
+          if (['EXPENSE', 'REPAYMENT'].includes(s.type)) totalExpenses += parseFloat(s.amount);
+        });
+      });
+    });
 
     return {
       totalBalance,
@@ -152,9 +156,13 @@ export default function Dashboard() {
   const spendingByType = useMemo(() => {
     const typeMap: { [key: string]: number } = {};
     data.transactions.forEach(t => {
-      if (['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(t.type)) {
-        typeMap[t.type] = (typeMap[t.type] || 0) + parseFloat(t.amount);
-      }
+      t.accounts.forEach(acc => {
+        acc.splits.forEach(s => {
+          if (['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(s.type)) {
+            typeMap[s.type] = (typeMap[s.type] || 0) + parseFloat(s.amount);
+          }
+        });
+      });
     });
 
     return Object.entries(typeMap).map(([name, value]) => ({
@@ -179,11 +187,15 @@ export default function Dashboard() {
 
       let balance = 0;
       transactionsUpToDay.forEach(t => {
-        if (['INCOME', 'LOAN_TAKEN', 'REIMBURSEMENT'].includes(t.type)) {
-          balance += parseFloat(t.amount);
-        } else if (['EXPENSE', 'MONEY_LENT', 'REPAYMENT'].includes(t.type)) {
-          balance -= parseFloat(t.amount);
-        }
+        t.accounts.forEach(acc => {
+          acc.splits.forEach(s => {
+            if (['INCOME', 'LOAN_TAKEN', 'REIMBURSEMENT'].includes(s.type)) {
+              balance += parseFloat(s.amount);
+            } else if (['EXPENSE', 'MONEY_LENT', 'REPAYMENT'].includes(s.type)) {
+              balance -= parseFloat(s.amount);
+            }
+          });
+        });
       });
 
       trend.push({
@@ -209,14 +221,19 @@ export default function Dashboard() {
       .filter(t => {
         const matchesSearch = !transactionSearch ||
           t.note?.toLowerCase().includes(transactionSearch.toLowerCase()) ||
-          t.type.toLowerCase().includes(transactionSearch.toLowerCase());
+          t.accounts.some(acc => acc.splits.some(s => s.type.toLowerCase().includes(transactionSearch.toLowerCase())));
         return matchesSearch;
       })
       .sort((a, b) => {
-        if (transactionSortBy === 'date_desc') return new Date(b.date).getTime() - new Date(a.date).getTime();
-        if (transactionSortBy === 'date_asc') return new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (transactionSortBy === 'amount_desc') return parseFloat(b.amount) - parseFloat(a.amount);
-        if (transactionSortBy === 'amount_asc') return parseFloat(a.amount) - parseFloat(b.amount);
+        const timeA = new Date(a.date).getTime();
+        const timeB = new Date(b.date).getTime();
+        if (transactionSortBy === 'date_desc') return timeB - timeA;
+        if (transactionSortBy === 'date_asc') return timeA - timeB;
+
+        const amtA = parseFloat(a.total_amount);
+        const amtB = parseFloat(b.total_amount);
+        if (transactionSortBy === 'amount_desc') return amtB - amtA;
+        if (transactionSortBy === 'amount_asc') return amtA - amtB;
         return 0;
       })
       .slice(0, 5); // Show only 5 most recent/filtered
@@ -417,16 +434,6 @@ export default function Dashboard() {
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showTransactionFilters ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
               <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl space-y-3">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  {/* <div className="relative flex-1">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" />
-                    <input
-                      type="text"
-                      className="input-field pl-8 text-sm h-10 bg-white dark:bg-slate-900 border-none"
-                      placeholder="Search note…"
-                      value={transactionSearch}
-                      onChange={e => setTransactionSearch(e.target.value)}
-                    />
-                  </div> */}
                   <select
                     className="input-field text-sm h-10 bg-white dark:bg-slate-900 border-none sm:w-40"
                     value={transactionSortBy}
@@ -454,8 +461,9 @@ export default function Dashboard() {
 
             <div className="space-y-3">
               {filteredTransactions.map((t) => {
-                const account = data.accounts.find(a => a.id === t.account);
-                const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(t.type);
+                const mainSplit = t.accounts[0]?.splits[0];
+                const type = mainSplit?.type || 'EXPENSE';
+                const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(type);
                 return (
                   <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-xl">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -463,12 +471,12 @@ export default function Dashboard() {
                         {isIncome ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{t.note || t.type.replace('_', ' ')}</p>
-                        <p className="text-xs text-secondary">{account?.bank_name} • {format(new Date(t.date), 'MMM dd')}</p>
+                        <p className="font-medium truncate">{t.note || type.replace('_', ' ')}</p>
+                        <p className="text-xs text-secondary">{t.accounts[0]?.bank_name} • {format(new Date(t.date), 'MMM dd')}</p>
                       </div>
                     </div>
                     <div className={`font-bold whitespace-nowrap ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-                      {isIncome ? '+' : '-'}Rs. {parseFloat(t.amount).toLocaleString()}
+                      {isIncome ? '+' : '-'}Rs. {parseFloat(t.total_amount).toLocaleString()}
                     </div>
                   </div>
                 );
