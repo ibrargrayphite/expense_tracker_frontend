@@ -13,7 +13,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 const TX_TYPES = [
     { value: 'EXPENSE', label: 'Expense' },
     { value: 'INCOME', label: 'Income' },
-    { value: 'REPAYMENT', label: 'Loan Repayment (I pay back)' },
+    { value: 'LOAN_REPAYMENT', label: 'Loan Repayment (I pay back)' },
     { value: 'REIMBURSEMENT', label: 'Lent Money Back (They pay me)' },
     { value: 'LOAN_TAKEN', label: 'Add to Loan Taken' },
     { value: 'MONEY_LENT', label: 'Lent New Money' },
@@ -310,7 +310,7 @@ export default function TransactionsPage() {
     };
 
     const addSplit = () => {
-        setSplits([...splits, { account: '', amount: '', type: form.type, contact: '', loan: '' }]);
+        setSplits([...splits, { account: '', amount: '', type: form.type, contact: form.contact || '', loan: form.loan || '' }]);
     };
 
     if (loading) return null;
@@ -375,10 +375,10 @@ export default function TransactionsPage() {
                                 <div className="flex gap-4">
                                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${t.is_internal
                                         ? 'bg-blue-500/10 text-blue-500'
-                                        : (t as Transaction).accounts[0]?.splits[0].type === 'INCOME' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+                                        : (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type))) ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
                                         }`}>
                                         {t.is_internal ? <ArrowRightLeft size={24} /> : (
-                                            ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes((t as Transaction).accounts[0]?.splits[0].type)
+                                            (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type)))
                                                 ? <ArrowUpRight size={24} />
                                                 : <ArrowDownLeft size={24} />
                                         )}
@@ -386,7 +386,7 @@ export default function TransactionsPage() {
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                                                {t.is_internal ? 'Transfer' : (t as Transaction).accounts[0]?.splits[0].type.replace('_', ' ')}
+                                                {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split Transaction' : (t as Transaction).accounts[0]?.splits[0]?.type.replace('_', ' ')}
                                             </span>
                                             <span className="text-[10px] font-bold text-slate-400">
                                                 {format(new Date(t.date), 'MMM dd, yyyy • hh:mm a')}
@@ -425,10 +425,10 @@ export default function TransactionsPage() {
                                 <div className="text-right space-y-2">
                                     <div className={`text-xl font-black ${t.is_internal
                                         ? 'text-slate-500'
-                                        : ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes((t as Transaction).accounts[0]?.splits[0].type) ? 'text-green-600' : 'text-red-500'
+                                        : (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type))) ? 'text-green-600' : 'text-red-500'
                                         }`}>
                                         {t.is_internal ? '' : (
-                                            ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes((t as Transaction).accounts[0]?.splits[0].type) ? '+' : '-'
+                                            (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type))) ? '+' : '-'
                                         )}
                                         Rs. {parseFloat((t as any).total_amount || (t as any).amount).toLocaleString()}
                                     </div>
@@ -567,7 +567,7 @@ export default function TransactionsPage() {
                                                 </select>
                                             </div>
                                         )}
-                                        {['REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
+                                        {['LOAN_REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
                                             <>
                                                 <div>
                                                     <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Contact</label>
@@ -576,12 +576,12 @@ export default function TransactionsPage() {
                                                         {data.contacts.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                                                     </select>
                                                 </div>
-                                                {['REPAYMENT', 'REIMBURSEMENT'].includes(form.type) && (
+                                                {['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(form.type) && (
                                                     <div>
                                                         <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Specific Loan</label>
                                                         <select className="input-field py-3" value={form.loan} onChange={e => setForm({ ...form, loan: e.target.value })} required disabled={!form.contact}>
                                                             <option value="">-- Select Record --</option>
-                                                            {data.loans.filter(l => l.contact?.toString() === form.contact && (form.type === 'REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
+                                                            {data.loans.filter(l => l.contact?.toString() === form.contact && (form.type === 'LOAN_REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
                                                                 <option key={l.id} value={l.id}>Rs. {parseFloat(l.remaining_amount).toLocaleString()} remaining</option>
                                                             ))}
                                                         </select>
@@ -645,7 +645,7 @@ export default function TransactionsPage() {
                         <div className="grid gap-4">
                             {splits.map((s, idx) => (
                                 <div key={idx} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                                    <div className="md:col-span-3">
+                                    <div className="md:col-span-2">
                                         <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Account</label>
                                         <select
                                             className="input-field text-sm"
@@ -660,7 +660,7 @@ export default function TransactionsPage() {
                                             {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name}</option>)}
                                         </select>
                                     </div>
-                                    <div className="md:col-span-3">
+                                    <div className="md:col-span-2">
                                         <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Type</label>
                                         <select
                                             className="input-field text-sm"
@@ -674,7 +674,7 @@ export default function TransactionsPage() {
                                             {TX_TYPES.filter(t => t.value !== 'TRANSFER').map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                         </select>
                                     </div>
-                                    <div className="md:col-span-4">
+                                    <div className="md:col-span-2">
                                         <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Amount (Rs.)</label>
                                         <input
                                             type="number"
@@ -688,6 +688,40 @@ export default function TransactionsPage() {
                                         />
                                     </div>
                                     <div className="md:col-span-2">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Contact</label>
+                                        <select
+                                            className="input-field text-sm"
+                                            value={s.contact}
+                                            onChange={e => {
+                                                const newSplits = [...splits];
+                                                newSplits[idx].contact = e.target.value;
+                                                newSplits[idx].loan = '';
+                                                setSplits(newSplits);
+                                            }}
+                                        >
+                                            <option value="">-- None --</option>
+                                            {data.contacts.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Link Loan</label>
+                                        <select
+                                            className="input-field text-sm"
+                                            value={s.loan}
+                                            onChange={e => {
+                                                const newSplits = [...splits];
+                                                newSplits[idx].loan = e.target.value;
+                                                setSplits(newSplits);
+                                            }}
+                                            disabled={!s.contact || !['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(s.type)}
+                                        >
+                                            <option value="">-- Select --</option>
+                                            {data.loans.filter(l => l.contact?.toString() === s.contact && (s.type === 'LOAN_REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
+                                                <option key={l.id} value={l.id}>Rs. {parseFloat(l.remaining_amount).toLocaleString()} rem.</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-1">
                                         <button
                                             onClick={() => setSplits(splits.filter((_, i) => i !== idx))}
                                             className="btn btn-secondary w-full p-2 text-red-500 border-red-500/20 hover:bg-red-500/10"

@@ -307,13 +307,6 @@ export default function AccountsPage() {
                                         <p className="text-lg sm:text-xl font-bold text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <button
-                                            onClick={() => toggleExpand(acc.id)}
-                                            className={`p-2 rounded-xl transition-all ${expandedAccounts[acc.id] ? 'bg-primary text-white shadow-md' : 'text-primary hover:bg-primary/10'}`}
-                                            title="View Transactions"
-                                        >
-                                            <ArrowUpDown size={20} />
-                                        </button>
                                         <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
                                             <Edit3 size={20} />
                                         </button>
@@ -323,50 +316,6 @@ export default function AccountsPage() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Inline Transactions View */}
-                            {expandedAccounts[acc.id] && (
-                                <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 animate-scale-in">
-                                    <div className="p-4 sm:p-6">
-                                        <h4 className="text-xs font-black uppercase tracking-widest text-secondary mb-4 flex items-center gap-2">
-                                            <HistoryIcon size={14} className="text-primary" />
-                                            Recent Transactions
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {acc.transactions && acc.transactions.length > 0 ? (
-                                                acc.transactions.slice(0, 5).map((t) => (
-                                                    <div key={t.id} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 shadow-sm transition-all hover:translate-x-1">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
-                                                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
-                                                                : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
-                                                                }`}>
-                                                                {t.type === 'INCOME' ? 'IN' : t.type === 'EXPENSE' ? 'EX' : t.type === 'LOAN_TAKEN' ? 'LT' : t.type === 'MONEY_LENT' ? 'ML' : t.type === 'REPAYMENT' ? 'RP' : 'RB'}
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-bold">{t.note || t.type.replace('_', ' ')}</p>
-                                                                <p className="text-[10px] text-secondary font-medium">
-                                                                    {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <p className={`text-sm font-black ${t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN'
-                                                            ? 'text-emerald-500'
-                                                            : 'text-rose-500'
-                                                            }`}>
-                                                            {t.type === 'INCOME' || t.type === 'REIMBURSEMENT' || t.type === 'LOAN_TAKEN' ? '+' : '-'} Rs. {parseFloat(t.amount).toLocaleString()}
-                                                        </p>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-center py-6 text-xs text-secondary italic opacity-60">
-                                                    No transactions recorded for this account.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     ))}
                     {accounts.length === 0 && (
