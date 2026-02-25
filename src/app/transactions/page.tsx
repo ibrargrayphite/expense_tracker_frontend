@@ -37,6 +37,13 @@ interface Loan {
     is_closed: boolean;
 }
 
+interface ContactAccount {
+    id: number;
+    account_name: string;
+    account_number: string;
+    contact: number;
+}
+
 interface Contact {
     id: number;
     full_name: string;
@@ -105,6 +112,7 @@ export default function TransactionsPage() {
         contacts: Contact[];
         expenseCategories: Category[];
         incomeSources: Category[];
+        contactAccounts: ContactAccount[];
     }>({
         transactions: [],
         internalTransactions: [],
@@ -112,7 +120,8 @@ export default function TransactionsPage() {
         loans: [],
         contacts: [],
         expenseCategories: [],
-        incomeSources: []
+        incomeSources: [],
+        contactAccounts: []
     });
 
     // Filter & sort state
@@ -166,7 +175,7 @@ export default function TransactionsPage() {
             if (filterDateFrom) params.start_date = filterDateFrom;
             if (filterDateTo) params.end_date = filterDateTo;
 
-            const [txRes, internalRes, accRes, loanRes, contactRes, expCatRes, incSrcRes] = await Promise.all([
+            const [txRes, internalRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes] = await Promise.all([
                 api.get('transactions/', { params }),
                 api.get('internal-transactions/'),
                 api.get('accounts/'),
@@ -174,6 +183,7 @@ export default function TransactionsPage() {
                 api.get('contacts/'),
                 api.get('expense-categories/'),
                 api.get('income-sources/'),
+                api.get('contact-accounts/'),
             ]);
 
             setData({
@@ -184,6 +194,7 @@ export default function TransactionsPage() {
                 contacts: contactRes.data,
                 expenseCategories: expCatRes.data,
                 incomeSources: incSrcRes.data,
+                contactAccounts: contactAccRes.data,
             });
 
             if (accRes.data.length > 0 && !form.account) {
@@ -236,11 +247,11 @@ export default function TransactionsPage() {
                     date: form.date,
                 });
             } else {
-                const formData = new FormData();
-                formData.append('date', form.date);
-                if (form.contact) formData.append('contact', form.contact);
-                if (form.contact_account) formData.append('contact_account', form.contact_account);
-                if (image) formData.append('image', image);
+                const payload: any = {
+                    date: form.date,
+                    contact: form.contact || null,
+                    contact_account: form.contact_account || null,
+                };
 
                 let accountsPayload = [];
                 if (isSplitEnabled) {
@@ -255,13 +266,8 @@ export default function TransactionsPage() {
                             loan: s.loan || null
                         };
 
-                        if (modalMode === 'STANDARD') {
-                            splitPayload.expense_category = form.expense_category || null;
-                            splitPayload.income_source = form.income_source || null;
-                        } else {
-                            splitPayload.expense_category = s.expense_category || null;
-                            splitPayload.income_source = s.income_source || null;
-                        }
+                        splitPayload.expense_category = s.expense_category || null;
+                        splitPayload.income_source = s.income_source || null;
 
                         accountGroups[s.account].push(splitPayload);
                     });
@@ -284,11 +290,21 @@ export default function TransactionsPage() {
                     }];
                 }
 
-                formData.append('accounts', JSON.stringify(accountsPayload));
+                if (image) {
+                    const formData = new FormData();
+                    formData.append('date', payload.date);
+                    if (payload.contact) formData.append('contact', payload.contact);
+                    if (payload.contact_account) formData.append('contact_account', payload.contact_account);
+                    formData.append('image', image);
+                    formData.append('accounts', JSON.stringify(accountsPayload));
 
-                await api.post('transactions/', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                    await api.post('transactions/', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                } else {
+                    payload.accounts = accountsPayload;
+                    await api.post('transactions/', payload);
+                }
             }
 
             showToast('Success!', 'success');
@@ -660,8 +676,8 @@ export default function TransactionsPage() {
                                                             disabled={!form.contact}
                                                         >
                                                             <option value="">-- Select Account --</option>
-                                                            {data.contacts.find(c => c.id.toString() === form.contact)?.accounts?.map((acc: any) => (
-                                                                <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_number}</option>
+                                                            {data.contactAccounts.filter(acc => acc.contact.toString() === form.contact).map((acc: any) => (
+                                                                <option key={acc.id} value={acc.id}>{acc.account_name} - {acc.account_number}</option>
                                                             ))}
                                                         </select>
                                                     </div>
@@ -736,7 +752,7 @@ export default function TransactionsPage() {
                             <div className="grid gap-4">
                                 {splits.map((s, idx) => (
                                     <div key={idx} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                                        <div className={modalMode === 'STANDARD' ? 'md:col-span-7' : 'md:col-span-3'}>
+                                        <div className={modalMode === 'STANDARD' ? 'md:col-span-4' : 'md:col-span-3'}>
                                             <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Account</label>
                                             <select
                                                 className="input-field text-sm"
@@ -752,6 +768,31 @@ export default function TransactionsPage() {
                                                 {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_name}</option>)}
                                             </select>
                                         </div>
+
+                                        {modalMode === 'STANDARD' && (
+                                            <div className="md:col-span-4">
+                                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">
+                                                    {form.type === 'INCOME' ? 'Source' : 'Category'}
+                                                </label>
+                                                <select
+                                                    className="input-field text-sm"
+                                                    value={form.type === 'INCOME' ? s.income_source : s.expense_category}
+                                                    onChange={e => {
+                                                        const newSplits = [...splits];
+                                                        if (form.type === 'INCOME') newSplits[idx].income_source = e.target.value;
+                                                        else newSplits[idx].expense_category = e.target.value;
+                                                        setSplits(newSplits);
+                                                    }}
+                                                    required
+                                                >
+                                                    <option value="">-- Select --</option>
+                                                    {form.type === 'INCOME'
+                                                        ? data.incomeSources.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                                        : data.expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                                    }
+                                                </select>
+                                            </div>
+                                        )}
 
                                         {modalMode === 'LOAN' && (
                                             <div className="md:col-span-3">
@@ -770,7 +811,7 @@ export default function TransactionsPage() {
                                             </div>
                                         )}
 
-                                        <div className={modalMode === 'STANDARD' ? 'md:col-span-4' : 'md:col-span-3'}>
+                                        <div className={modalMode === 'STANDARD' ? 'md:col-span-3' : 'md:col-span-3'}>
                                             <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Amount (Rs.)</label>
                                             <input
                                                 type="number"
