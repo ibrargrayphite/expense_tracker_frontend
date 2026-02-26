@@ -18,8 +18,8 @@ export default function LoansPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingLoan, setEditingLoan] = useState<any>(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-    const [form, setForm] = useState({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
-    const [contactForm, setContactForm] = useState({ first_name: '', last_name: '', phone: '' });
+    const [form, setForm] = useState({ contact: '', type: 'TAKEN', total_amount: '', description: '', is_closed: false });
+    const [contactForm, setContactForm] = useState({ first_name: '', last_name: '', phone1: '' });
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
     // Filter & sort
@@ -62,14 +62,14 @@ export default function LoansPage() {
             setEditingLoan(loan);
             setForm({
                 contact: loan.contact || '',
-                person_name: loan.person_name || '',
                 type: loan.type,
                 total_amount: loan.total_amount,
-                description: loan.description || ''
+                description: loan.description || '',
+                is_closed: loan.is_closed || false
             });
         } else {
             setEditingLoan(null);
-            setForm({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
+            setForm({ contact: '', type: 'TAKEN', total_amount: '', description: '', is_closed: false });
         }
         setIsModalOpen(true);
     };
@@ -77,22 +77,21 @@ export default function LoansPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const payload = {
+                ...form,
+                remaining_amount: editingLoan ? editingLoan.remaining_amount : form.total_amount
+            };
+
             if (editingLoan) {
-                await api.put(`loans/${editingLoan.id}/`, {
-                    ...form,
-                    remaining_amount: form.total_amount
-                });
+                await api.put(`loans/${editingLoan.id}/`, payload);
                 showToast('Loan record updated successfully!', 'success');
             } else {
-                await api.post('loans/', {
-                    ...form,
-                    remaining_amount: form.total_amount
-                });
+                await api.post('loans/', payload);
                 showToast('Loan record created!', 'success');
             }
             setIsModalOpen(false);
             setEditingLoan(null);
-            setForm({ contact: '', person_name: '', type: 'TAKEN', total_amount: '', description: '' });
+            setForm({ contact: '', type: 'TAKEN', total_amount: '', description: '', is_closed: false });
             fetchLoans();
         } catch (err) {
             showToast('Something went wrong. Please try again.', 'error');
@@ -105,7 +104,7 @@ export default function LoansPage() {
         try {
             const res = await api.post('contacts/', contactForm);
             setIsContactModalOpen(false);
-            setContactForm({ first_name: '', last_name: '', phone: '' });
+            setContactForm({ first_name: '', last_name: '', phone1: '' });
             setForm({ ...form, contact: res.data.id });
             fetchContacts();
         } catch (err) {
@@ -127,8 +126,7 @@ export default function LoansPage() {
     };
 
     const getDisplayName = (loan: any) => {
-        if (loan.contact_name) return loan.contact_name;
-        return loan.person_name || 'Unknown';
+        return loan.contact_name || 'Unknown Contact';
     };
 
     const filteredLoans = loans
@@ -435,7 +433,7 @@ export default function LoansPage() {
                                     className="input-field"
                                     value={form.contact}
                                     onChange={e => setForm({ ...form, contact: e.target.value })}
-                                    required={!form.person_name}
+                                    required
                                 >
                                     <option value="">-- Choose Contact --</option>
                                     {contacts.map((c: any) => (
@@ -464,6 +462,20 @@ export default function LoansPage() {
                                     onChange={e => setForm({ ...form, description: e.target.value })}
                                 />
                             </div>
+                            {editingLoan && (
+                                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        id="is_closed"
+                                        className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary"
+                                        checked={form.is_closed}
+                                        onChange={e => setForm({ ...form, is_closed: e.target.checked })}
+                                    />
+                                    <label htmlFor="is_closed" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                        Mark as Closed / Settled
+                                    </label>
+                                </div>
+                            )}
                             <button type="submit" className="btn btn-primary w-full mt-4">
                                 {editingLoan ? 'Update Record' : 'Save Record'}
                             </button>
@@ -508,8 +520,8 @@ export default function LoansPage() {
                                 <input
                                     type="text"
                                     className="input-field"
-                                    value={contactForm.phone}
-                                    onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                                    value={contactForm.phone1}
+                                    onChange={e => setContactForm({ ...contactForm, phone1: e.target.value })}
                                     required
                                 />
                             </div>

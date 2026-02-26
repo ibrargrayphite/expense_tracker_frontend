@@ -58,7 +58,7 @@ export default function AccountsPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-    const [form, setForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '' });
+    const [form, setForm] = useState({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '', balance: '' });
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
     const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
 
@@ -121,7 +121,7 @@ export default function AccountsPage() {
             });
         } else {
             setEditingAccount(null);
-            setForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '' });
+            setForm({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '', balance: '' });
         }
         setIsModalOpen(true);
     };
@@ -131,9 +131,9 @@ export default function AccountsPage() {
         try {
             const payload = { ...form };
             if (form.bank_name === 'Cash') {
-                payload.account_name = 'Cash';
-                payload.account_number = '';
-                payload.iban = '';
+                if (!form.account_name) payload.account_name = 'Cash Wallet';
+                // For Cash, if no account number is provided, we can use a timestamp or 'CASH'
+                if (!form.account_number) payload.account_number = `CASH-${Date.now()}`;
             }
 
             if (editingAccount) {
@@ -145,7 +145,7 @@ export default function AccountsPage() {
             }
             setIsModalOpen(false);
             setEditingAccount(null);
-            setForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '', balance: '' });
+            setForm({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '', balance: '' });
             fetchAccounts();
         } catch (err) {
             showToast('Something went wrong. Please try again.', 'error');
@@ -307,12 +307,16 @@ export default function AccountsPage() {
                                         <p className="text-lg sm:text-xl font-bold text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
-                                            <Edit3 size={20} />
-                                        </button>
-                                        <button onClick={() => setConfirmDelete(acc.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                                            <Trash2 size={20} />
-                                        </button>
+                                        {acc.bank_name !== 'CASH' && (
+                                            <>
+                                                <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
+                                                    <Edit3 size={20} />
+                                                </button>
+                                                <button onClick={() => setConfirmDelete(acc.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -342,22 +346,22 @@ export default function AccountsPage() {
                                     value={form.bank_name}
                                     onChange={e => setForm({ ...form, bank_name: e.target.value })}
                                 >
-                                    {BANK_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    {BANK_OPTIONS.filter(opt => opt !== 'Cash').map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Account Name (e.g. Personal, Work)</label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    placeholder={form.bank_name === 'Cash' ? 'Main Wallet' : 'My JazzCash'}
+                                    value={form.account_name}
+                                    onChange={e => setForm({ ...form, account_name: e.target.value })}
+                                    required
+                                />
                             </div>
                             {form.bank_name !== 'Cash' && (
                                 <>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Account Name (e.g. Personal, Work)</label>
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="My JazzCash"
-                                            value={form.account_name}
-                                            onChange={e => setForm({ ...form, account_name: e.target.value })}
-                                            required
-                                        />
-                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Account Number</label>
                                         <input
@@ -391,7 +395,9 @@ export default function AccountsPage() {
                                     value={form.balance}
                                     onChange={e => setForm({ ...form, balance: e.target.value })}
                                     required
+                                    disabled={!!editingAccount}
                                 />
+                                {editingAccount && <p className="text-[10px] text-orange-500 mt-1 font-medium">Balance cannot be modified directly. Use transactions to update balance.</p>}
                             </div>
                             <button type="submit" className="btn btn-primary w-full mt-4">
                                 {editingAccount ? 'Update Account' : 'Save Account'}

@@ -22,8 +22,10 @@ const BANK_OPTIONS = [
 
 interface ContactAccount {
     id: number;
+    bank_name: string;
     account_name: string;
     account_number: string;
+    iban?: string;
 }
 
 interface Loan {
@@ -47,7 +49,9 @@ interface Contact {
     id: number;
     first_name: string;
     last_name: string;
-    phone: string;
+    phone1: string;
+    phone2?: string;
+    email?: string;
     accounts: ContactAccount[];
     loans: Loan[];
     transactions: Transaction[];
@@ -67,9 +71,9 @@ export default function ContactsPage() {
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
     const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-    const [form, setForm] = useState({ first_name: '', last_name: '', phone: '' });
+    const [form, setForm] = useState({ first_name: '', last_name: '', phone1: '', phone2: '', email: '' });
     const [editingAccount, setEditingAccount] = useState<ContactAccount | null>(null);
-    const [accountForm, setAccountForm] = useState({ account_name: 'Cash', account_number: '' });
+    const [accountForm, setAccountForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '' });
     const [confirmDeleteContact, setConfirmDeleteContact] = useState<number | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
     const [expandedContacts, setExpandedContacts] = useState<Record<number, boolean>>({});
@@ -101,10 +105,16 @@ export default function ContactsPage() {
     const handleOpenModal = (contact: Contact | null = null) => {
         if (contact) {
             setEditingContact(contact);
-            setForm({ first_name: contact.first_name, last_name: contact.last_name, phone: contact.phone });
+            setForm({
+                first_name: contact.first_name,
+                last_name: contact.last_name,
+                phone1: contact.phone1,
+                phone2: contact.phone2 || '',
+                email: contact.email || ''
+            });
         } else {
             setEditingContact(null);
-            setForm({ first_name: '', last_name: '', phone: '' });
+            setForm({ first_name: '', last_name: '', phone1: '', phone2: '', email: '' });
         }
         setIsModalOpen(true);
     };
@@ -113,10 +123,15 @@ export default function ContactsPage() {
         setSelectedContact(contact);
         if (account) {
             setEditingAccount(account);
-            setAccountForm({ account_name: account.account_name, account_number: account.account_number });
+            setAccountForm({
+                bank_name: account.bank_name,
+                account_name: account.account_name,
+                account_number: account.account_number,
+                iban: account.iban || ''
+            });
         } else {
             setEditingAccount(null);
-            setAccountForm({ account_name: 'Cash', account_number: '' });
+            setAccountForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '' });
         }
         setIsAccountModalOpen(true);
     };
@@ -133,7 +148,7 @@ export default function ContactsPage() {
             }
             setIsModalOpen(false);
             setEditingContact(null);
-            setForm({ first_name: '', last_name: '', phone: '' });
+            setForm({ first_name: '', last_name: '', phone1: '', phone2: '', email: '' });
             fetchContacts();
         } catch (err) {
             showToast('Something went wrong. Please try again.', 'error');
@@ -145,20 +160,18 @@ export default function ContactsPage() {
         e.preventDefault();
         if (!selectedContact) return;
         try {
+            const data = {
+                ...accountForm,
+                contact: selectedContact.id
+            };
             if (editingAccount) {
-                await api.put(`contact-accounts/${editingAccount.id}/`, {
-                    ...accountForm,
-                    contact: selectedContact.id
-                });
+                await api.put(`contact-accounts/${editingAccount.id}/`, data);
             } else {
-                await api.post('contact-accounts/', {
-                    ...accountForm,
-                    contact: selectedContact.id
-                });
+                await api.post('contact-accounts/', data);
             }
             setIsAccountModalOpen(false);
             setEditingAccount(null);
-            setAccountForm({ account_name: 'Cash', account_number: '' });
+            setAccountForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '' });
             fetchContacts();
         } catch (err) {
             console.error(err);
@@ -194,7 +207,11 @@ export default function ContactsPage() {
     const filteredContacts = contacts
         .filter(c => {
             const name = `${c.first_name} ${c.last_name}`.toLowerCase();
-            const matchesSearch = !search || name.includes(search.toLowerCase()) || c.phone.includes(search);
+            const matchesSearch = !search ||
+                name.includes(search.toLowerCase()) ||
+                c.phone1.includes(search) ||
+                (c.phone2 && c.phone2.includes(search)) ||
+                (c.email && c.email.toLowerCase().includes(search.toLowerCase()));
             const matchesAccountCount = filterAccountCount === 'ALL' ||
                 (filterAccountCount === 'HAS_ACCOUNTS' && c.accounts.length > 0) ||
                 (filterAccountCount === 'NO_ACCOUNTS' && c.accounts.length === 0);
@@ -313,9 +330,21 @@ export default function ContactsPage() {
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-bold">{contact.first_name} {contact.last_name}</h3>
-                                        <p className="text-secondary flex items-center gap-2 mt-1">
-                                            <Phone size={14} /> {contact.phone}
-                                        </p>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                            <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
+                                                <Phone size={14} className="text-primary" /> {contact.phone1}
+                                            </p>
+                                            {contact.phone2 && (
+                                                <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
+                                                    <Phone size={14} className="text-primary" /> {contact.phone2}
+                                                </p>
+                                            )}
+                                            {contact.email && (
+                                                <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
+                                                    <X size={14} className="text-primary" /> {contact.email}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -372,8 +401,8 @@ export default function ContactsPage() {
                                     {contact.accounts.map((acc) => (
                                         <div key={acc.id} className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl flex items-center justify-between group border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all">
                                             <div>
-                                                <p className="font-bold text-[13px]">{acc.account_name}</p>
-                                                <p className="text-[10px] text-secondary">{acc.account_number}</p>
+                                                <p className="font-bold text-[13px]">{acc.account_name} ({acc.bank_name})</p>
+                                                <p className="text-[10px] text-secondary">{acc.account_number}{acc.iban ? ` | IBAN: ${acc.iban}` : ''}</p>
                                             </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1 text-slate-400 hover:text-primary transition-colors">
@@ -508,15 +537,37 @@ export default function ContactsPage() {
                                         />
                                     </div>
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Primary Phone</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="+92..."
+                                            value={form.phone1}
+                                            onChange={e => setForm({ ...form, phone1: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Secondary Phone</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="+92..."
+                                            value={form.phone2}
+                                            onChange={e => setForm({ ...form, phone2: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Phone Number</label>
+                                    <label className="block text-sm font-medium mb-1">Email Address (Optional)</label>
                                     <input
-                                        type="text"
+                                        type="email"
                                         className="input-field"
-                                        placeholder="+92..."
-                                        value={form.phone}
-                                        onChange={e => setForm({ ...form, phone: e.target.value })}
-                                        required
+                                        placeholder="contact@example.com"
+                                        value={form.email}
+                                        onChange={e => setForm({ ...form, email: e.target.value })}
                                     />
                                 </div>
                                 <button type="submit" className="btn btn-primary w-full mt-4">
@@ -541,11 +592,11 @@ export default function ContactsPage() {
                             </div>
                             <form onSubmit={handleAddAccount} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Bank / Platform Name</label>
+                                    <label className="block text-sm font-medium mb-1">Bank / Platform</label>
                                     <select
                                         className="input-field"
-                                        value={accountForm.account_name}
-                                        onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                        value={accountForm.bank_name}
+                                        onChange={e => setAccountForm({ ...accountForm, bank_name: e.target.value })}
                                         required
                                     >
                                         {BANK_OPTIONS.map(opt => (
@@ -554,7 +605,18 @@ export default function ContactsPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Account Number / IBAN</label>
+                                    <label className="block text-sm font-medium mb-1">Account Holder Name</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="e.g. Personal, Business"
+                                        value={accountForm.account_name}
+                                        onChange={e => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Account Number</label>
                                     <input
                                         type="text"
                                         className="input-field"
@@ -562,6 +624,16 @@ export default function ContactsPage() {
                                         value={accountForm.account_number}
                                         onChange={e => setAccountForm({ ...accountForm, account_number: e.target.value })}
                                         required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">IBAN (Optional)</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="PK..."
+                                        value={accountForm.iban}
+                                        onChange={e => setAccountForm({ ...accountForm, iban: e.target.value })}
                                     />
                                 </div>
                                 <button type="submit" className="btn btn-primary w-full mt-4">
