@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, X, Search, Filter, Image as ImageIcon, Trash2, Download, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Handshake, WalletCards } from 'lucide-react';
+import { Plus, X, Search, Filter, Image as ImageIcon, Trash2, Download, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Handshake, WalletCards, Edit3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -509,7 +509,7 @@ export default function TransactionsPage() {
                                     <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">From</th>
                                     <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">To</th>
                                     <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Type</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Amount</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</th>
                                     <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
                                     <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Note</th>
                                     <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Receipt</th>
@@ -571,7 +571,7 @@ export default function TransactionsPage() {
                                                     {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split' : (t as Transaction).accounts[0]?.splits[0]?.type.replace('_', ' ')}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-right">
+                                            <td className="p-4">
                                                 <span className={`text-sm font-black ${t.is_internal ? 'text-slate-500' :
                                                     isIncome ? 'text-green-600' : 'text-red-500'
                                                     }`}>
@@ -615,20 +615,22 @@ export default function TransactionsPage() {
             </main >
 
             {/* Transaction Modal */}
-            {
-                isModalOpen && (
-                    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                        <div className="card w-full max-w-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                            <div className="flex items-center justify-between mb-8">
-                                <h2 className="text-3xl font-black italic tracking-tighter uppercase">
-                                    {modalMode === 'STANDARD' ? 'Income & Expense' : modalMode === 'LOAN' ? 'Loan / Debt Record' : 'Internal Transfer'}
-                                </h2>
-                                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full dark:hover:bg-slate-800"><X size={24} /></button>
-                            </div>
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="card w-full max-w-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-3xl font-black italic tracking-tighter uppercase">
+                                {modalMode === 'STANDARD' ? 'Income & Expense' : modalMode === 'LOAN' ? 'Loan / Debt Record' : 'Internal Transfer'}
+                            </h2>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full dark:hover:bg-slate-800">
+                                <X size={24} />
+                            </button>
+                        </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {!isSplitEnabled && (
+                                    <div className="animate-in slide-in-from-left duration-300">
                                         <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Entry Type</label>
                                         <select
                                             className="input-field py-3 font-bold"
@@ -647,355 +649,412 @@ export default function TransactionsPage() {
                                             }).map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Date & Time</label>
-                                        <input
-                                            type="datetime-local"
-                                            className="input-field py-3"
-                                            value={form.date}
-                                            onChange={e => setForm({ ...form, date: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                {modalMode !== 'TRANSFER' && (
-                                    <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
-                                        <div>
-                                            <h4 className="font-bold text-sm">Complex Transaction?</h4>
-                                            <p className="text-xs text-slate-500">
-                                                {modalMode === 'STANDARD' ? 'Distribute amount across accounts' : 'Multiple transactions for this contact'}
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            disabled={modalMode === 'LOAN' && (!form.contact || !form.contact_account)}
-                                            onClick={() => {
-                                                if (!isSplitEnabled && splits.length === 0) {
-                                                    setSplits([{
-                                                        account: form.account,
-                                                        amount: form.amount,
-                                                        type: form.type,
-                                                        note: form.note,
-                                                        expense_category: form.expense_category,
-                                                        income_source: form.income_source,
-                                                        loan: form.loan
-                                                    }]);
-                                                }
-                                                setIsSplitEnabled(!isSplitEnabled);
-                                                if (!isSplitEnabled) setIsSplitModalOpen(true);
-                                            }}
-                                            className={`btn btn-sm ${isSplitEnabled ? 'btn-primary' : 'btn-secondary'} ${modalMode === 'LOAN' && (!form.contact || !form.contact_account) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        >
-                                            {isSplitEnabled ? 'Enabled' : 'Enable Split'}
-                                        </button>
-                                    </div>
                                 )}
+                                <div className={isSplitEnabled ? 'md:col-span-2' : ''}>
+                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Date & Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        className="input-field py-3"
+                                        value={form.date}
+                                        onChange={e => setForm({ ...form, date: e.target.value })}
+                                    />
+                                </div>
+                            </div>
 
-                                {!isSplitEnabled ? (
-                                    <div className="space-y-6 animate-in fade-in duration-300">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">
-                                                    {form.type === 'TRANSFER' ? 'From Account' : 'Account'}
-                                                </label>
-                                                <select className="input-field py-3" value={form.account} onChange={e => setForm({ ...form, account: e.target.value })} required>
-                                                    {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                {form.type === 'TRANSFER' ? (
-                                                    <>
-                                                        <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">To Account</label>
-                                                        <select className="input-field py-3" value={form.to_account} onChange={e => setForm({ ...form, to_account: e.target.value })} required>
-                                                            <option value="">-- Select Recipient --</option>
-                                                            {data.accounts.filter(a => a.id.toString() !== form.account).map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
-                                                        </select>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Amount (Rs.)</label>
-                                                        <input type="number" step="0.01" className="input-field py-3 text-lg font-black" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
-                                                    </>
-                                                )}
-                                            </div>
+                            {modalMode !== 'TRANSFER' && (
+                                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
+                                    <div>
+                                        <h4 className="font-bold text-sm">Complex Transaction?</h4>
+                                        <p className="text-xs text-slate-500">
+                                            {modalMode === 'STANDARD' ? 'Distribute amount across accounts' : 'Multiple transactions for this contact'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        disabled={modalMode === 'LOAN' && (!form.contact || !form.contact_account)}
+                                        onClick={() => {
+                                            if (!isSplitEnabled && splits.length === 0) {
+                                                setSplits([{
+                                                    account: form.account,
+                                                    amount: form.amount,
+                                                    type: form.type,
+                                                    note: form.note,
+                                                    expense_category: form.expense_category,
+                                                    income_source: form.income_source,
+                                                    loan: form.loan
+                                                }]);
+                                            }
+                                            setIsSplitEnabled(!isSplitEnabled);
+                                            if (!isSplitEnabled) setIsSplitModalOpen(true);
+                                        }}
+                                        className={`btn btn-sm ${isSplitEnabled ? 'btn-primary' : 'btn-secondary'} ${modalMode === 'LOAN' && (!form.contact || !form.contact_account) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        {isSplitEnabled ? 'Enabled' : 'Enable Split'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {!isSplitEnabled ? (
+                                <div className="space-y-6 animate-in fade-in duration-300">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">
+                                                {form.type === 'TRANSFER' ? 'From Account' : 'Account'}
+                                            </label>
+                                            <select className="input-field py-3" value={form.account} onChange={e => setForm({ ...form, account: e.target.value })} required>
+                                                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
+                                            </select>
                                         </div>
-
-                                        {form.type === 'TRANSFER' && (
-                                            <div>
-                                                <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Transfer Amount (Rs.)</label>
-                                                <input type="number" step="0.01" className="input-field py-3 text-lg font-black" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
-                                            </div>
-                                        )}
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {form.type === 'EXPENSE' && (
-                                                <div>
-                                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Category</label>
-                                                    <select className="input-field py-3" value={form.expense_category} onChange={e => setForm({ ...form, expense_category: e.target.value })} required={modalMode === 'STANDARD'}>
-                                                        <option value="">-- Select Category --</option>
-                                                        {data.expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                                    </select>
-                                                </div>
-                                            )}
-                                            {form.type === 'INCOME' && (
-                                                <div>
-                                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Source</label>
-                                                    <select className="input-field py-3" value={form.income_source} onChange={e => setForm({ ...form, income_source: e.target.value })} required={modalMode === 'STANDARD'}>
-                                                        <option value="">-- Select Source --</option>
-                                                        {data.incomeSources.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                                    </select>
-                                                </div>
-                                            )}
-                                            {['LOAN_REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
+                                        <div>
+                                            {form.type === 'TRANSFER' ? (
                                                 <>
-                                                    <div>
-                                                        <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Contact Person</label>
-                                                        <select className="input-field py-3" value={form.contact} onChange={e => setForm({ ...form, contact: e.target.value, contact_account: '', loan: '' })} required>
-                                                            <option value="">-- Select Person --</option>
-                                                            {data.contacts.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Contact Account</label>
-                                                        <select
-                                                            className="input-field py-3"
-                                                            value={form.contact_account}
-                                                            onChange={e => setForm({ ...form, contact_account: e.target.value })}
-                                                            required
-                                                            disabled={!form.contact}
-                                                        >
-                                                            <option value="">-- Select Account --</option>
-                                                            {data.contactAccounts.filter(acc => acc.contact.toString() === form.contact).map((acc: any) => (
-                                                                <option key={acc.id} value={acc.id}>{acc.account_name} - {acc.account_number}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    {['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(form.type) && (
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Specific Loan Record</label>
-                                                            <select className="input-field py-3" value={form.loan} onChange={e => setForm({ ...form, loan: e.target.value })} required disabled={!form.contact}>
-                                                                <option value="">-- Select Record --</option>
-                                                                {data.loans.filter(l => l.contact?.toString() === form.contact && (form.type === 'LOAN_REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
-                                                                    <option key={l.id} value={l.id}>Rs. {parseFloat(l.remaining_amount).toLocaleString()} remaining</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                    )}
+                                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">To Account</label>
+                                                    <select className="input-field py-3" value={form.to_account} onChange={e => setForm({ ...form, to_account: e.target.value })} required>
+                                                        <option value="">-- Select Recipient --</option>
+                                                        {data.accounts.filter(a => a.id.toString() !== form.account).map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
+                                                    </select>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Amount (Rs.)</label>
+                                                    <input type="number" step="0.01" className="input-field py-3 text-lg font-black" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
                                                 </>
                                             )}
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="p-6 bg-slate-100 dark:bg-slate-800/50 rounded-3xl text-center space-y-4">
-                                        <h4 className="font-black text-xl">Split Configuration Active</h4>
-                                        <p className="text-sm text-slate-500">You are managing transactions across {splits.length} accounts.</p>
-                                        <button type="button" onClick={() => setIsSplitModalOpen(true)} className="btn btn-primary">Edit Split Details</button>
-                                    </div>
-                                )}
 
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Note (Optional)</label>
-                                    <textarea
-                                        className="input-field min-h-[80px]"
-                                        placeholder="Add a memo..."
-                                        value={form.note}
-                                        onChange={e => setForm({ ...form, note: e.target.value })}
-                                    />
-                                </div>
-
-                                {form.type !== 'TRANSFER' && (
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Receipt / Attachment</label>
-                                        <input
-                                            type="file"
-                                            className="text-sm block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                            onChange={e => setImage(e.target.files ? e.target.files[0] : null)}
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="pt-4">
-                                    {(() => {
-                                        let isFormValid = false;
-                                        if (isSplitEnabled) {
-                                            isFormValid = splits.length > 0 && splits.every(s => {
-                                                const basic = !!s.account && !!s.amount;
-                                                if (modalMode === 'STANDARD') {
-                                                    return basic && (form.type === 'INCOME' ? !!s.income_source : !!s.expense_category);
-                                                }
-                                                if (modalMode === 'LOAN') {
-                                                    const requiresLoan = ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(s.type);
-                                                    return basic && (requiresLoan ? !!s.loan : true);
-                                                }
-                                                return basic;
-                                            });
-                                        } else {
-                                            const basic = !!form.account && !!form.amount;
-                                            if (modalMode === 'TRANSFER') {
-                                                isFormValid = basic && !!form.to_account;
-                                            } else if (modalMode === 'STANDARD') {
-                                                isFormValid = basic && (form.type === 'INCOME' ? !!form.income_source : !!form.expense_category);
-                                            } else if (modalMode === 'LOAN') {
-                                                const requiresLoan = ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(form.type);
-                                                isFormValid = basic && !!form.contact && !!form.contact_account && (requiresLoan ? !!form.loan : true);
-                                            }
-                                        }
-
-                                        return (
-                                            <button
-                                                type="submit"
-                                                className="btn btn-primary w-full py-4 text-lg shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                disabled={!isFormValid}
-                                            >
-                                                Complete Record
-                                            </button>
-                                        );
-                                    })()}
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Split Modal */}
-            {
-                isSplitModalOpen && (
-                    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-                        <div className="card w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <h2 className="text-3xl font-black uppercase tracking-tighter">Split Manager</h2>
-                                    <p className="text-slate-500 text-sm">Distribute the transaction across your accounts</p>
-                                </div>
-                                <button onClick={() => setIsSplitModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full dark:hover:bg-slate-800"><X size={24} /></button>
-                            </div>
-
-                            <div className="grid gap-4">
-                                {splits.map((s, idx) => (
-                                    <div key={idx} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                                        <div className={modalMode === 'STANDARD' ? 'md:col-span-4' : 'md:col-span-3'}>
-                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Account</label>
-                                            <select
-                                                className="input-field text-sm"
-                                                value={s.account}
-                                                onChange={e => {
-                                                    const newSplits = [...splits];
-                                                    newSplits[idx].account = e.target.value;
-                                                    setSplits(newSplits);
-                                                }}
-                                                required
-                                            >
-                                                <option value="">-- Select --</option>
-                                                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
-                                            </select>
+                                    {form.type === 'TRANSFER' && (
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Transfer Amount (Rs.)</label>
+                                            <input type="number" step="0.01" className="input-field py-3 text-lg font-black" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
                                         </div>
+                                    )}
 
-                                        {modalMode === 'STANDARD' && (
-                                            <div className="md:col-span-4">
-                                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">
-                                                    {form.type === 'INCOME' ? 'Source' : 'Category'}
-                                                </label>
-                                                <select
-                                                    className="input-field text-sm"
-                                                    value={form.type === 'INCOME' ? s.income_source : s.expense_category}
-                                                    onChange={e => {
-                                                        const newSplits = [...splits];
-                                                        if (form.type === 'INCOME') newSplits[idx].income_source = e.target.value;
-                                                        else newSplits[idx].expense_category = e.target.value;
-                                                        setSplits(newSplits);
-                                                    }}
-                                                    required
-                                                >
-                                                    <option value="">-- Select --</option>
-                                                    {form.type === 'INCOME'
-                                                        ? data.incomeSources.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-                                                        : data.expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-                                                    }
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {form.type === 'EXPENSE' && (
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Category</label>
+                                                <select className="input-field py-3" value={form.expense_category} onChange={e => setForm({ ...form, expense_category: e.target.value })} required={modalMode === 'STANDARD'}>
+                                                    <option value="">-- Select Category --</option>
+                                                    {data.expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                                 </select>
                                             </div>
                                         )}
-
-                                        {modalMode === 'LOAN' && (
-                                            <div className="md:col-span-3">
-                                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Type</label>
-                                                <select
-                                                    className="input-field text-sm"
-                                                    value={s.type}
-                                                    onChange={e => {
-                                                        const newSplits = [...splits];
-                                                        newSplits[idx].type = e.target.value;
-                                                        setSplits(newSplits);
-                                                    }}
-                                                >
-                                                    {TX_TYPES.filter(t => ['LOAN_TAKEN', 'MONEY_LENT', 'LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(t.value)).map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        {form.type === 'INCOME' && (
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Source</label>
+                                                <select className="input-field py-3" value={form.income_source} onChange={e => setForm({ ...form, income_source: e.target.value })} required={modalMode === 'STANDARD'}>
+                                                    <option value="">-- Select Source --</option>
+                                                    {data.incomeSources.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                                 </select>
                                             </div>
                                         )}
-
-                                        <div className={modalMode === 'STANDARD' ? 'md:col-span-3' : 'md:col-span-3'}>
-                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Amount (Rs.)</label>
-                                            <input
-                                                type="number"
-                                                className="input-field text-sm font-bold"
-                                                placeholder="0.00"
-                                                value={s.amount}
-                                                onChange={e => {
-                                                    const newSplits = [...splits];
-                                                    newSplits[idx].amount = e.target.value;
-                                                    setSplits(newSplits);
-                                                }}
-                                                required
-                                            />
+                                        {['LOAN_REPAYMENT', 'REIMBURSEMENT', 'LOAN_TAKEN', 'MONEY_LENT'].includes(form.type) && (
+                                            <>
+                                                <div>
+                                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Contact Person</label>
+                                                    <select className="input-field py-3" value={form.contact} onChange={e => setForm({ ...form, contact: e.target.value, contact_account: '', loan: '' })} required>
+                                                        <option value="">-- Select Person --</option>
+                                                        {data.contacts.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Contact Account</label>
+                                                    <select
+                                                        className="input-field py-3"
+                                                        value={form.contact_account}
+                                                        onChange={e => setForm({ ...form, contact_account: e.target.value })}
+                                                        required
+                                                        disabled={!form.contact}
+                                                    >
+                                                        <option value="">-- Select Account --</option>
+                                                        {data.contactAccounts.filter(acc => acc.contact.toString() === form.contact).map((acc: any) => (
+                                                            <option key={acc.id} value={acc.id}>{acc.account_name} - {acc.account_number}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                {['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(form.type) && (
+                                                    <div className="md:col-span-2">
+                                                        <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Specific Loan Record</label>
+                                                        <select className="input-field py-3" value={form.loan} onChange={e => setForm({ ...form, loan: e.target.value })} required disabled={!form.contact}>
+                                                            <option value="">-- Select Record --</option>
+                                                            {data.loans.filter(l => l.contact?.toString() === form.contact && (form.type === 'LOAN_REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
+                                                                <option key={l.id} value={l.id}>Rs. {parseFloat(l.remaining_amount).toLocaleString()} remaining</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-8 bg-slate-900 dark:bg-slate-950 rounded-[40px] text-white overflow-hidden relative group/split-active border-4 border-slate-100 dark:border-slate-800 shadow-xl animate-in zoom-in duration-300">
+                                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover/split-active:scale-110 transition-transform duration-500">
+                                        <Handshake size={120} />
+                                    </div>
+                                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                                        <div className="text-center md:text-left">
+                                            <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
+                                                <span className="w-3 h-3 rounded-full bg-primary animate-pulse"></span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Split Mode Active</span>
+                                            </div>
+                                            <h4 className="text-3xl font-black tracking-tighter mb-1">
+                                                Rs. {splits.reduce((acc: number, s: any) => acc + (parseFloat(s.amount) || 0), 0).toLocaleString()}
+                                            </h4>
+                                            <p className="text-slate-400 text-sm font-medium italic">Distributed across {splits.length} accounts</p>
                                         </div>
-
-                                        {modalMode === 'LOAN' && ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(s.type) && (
-                                            <div className="md:col-span-2">
-                                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Loan Ref</label>
-                                                <select
-                                                    className="input-field text-sm"
-                                                    value={s.loan}
-                                                    onChange={e => {
-                                                        const newSplits = [...splits];
-                                                        newSplits[idx].loan = e.target.value;
-                                                        setSplits(newSplits);
-                                                    }}
-                                                    required
-                                                >
-                                                    <option value="">-- Select --</option>
-                                                    {data.loans.filter(l => l.contact?.toString() === form.contact && (s.type === 'LOAN_REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
-                                                        <option key={l.id} value={l.id}>Rs. {parseFloat(l.remaining_amount).toLocaleString()}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        )}
-
-                                        <div className="md:col-span-1 flex justify-end pb-1">
+                                        <div className="flex flex-col gap-2 w-full md:w-auto">
                                             <button
                                                 type="button"
-                                                onClick={() => setSplits(splits.filter((_, i) => i !== idx))}
-                                                className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                                onClick={() => setIsSplitModalOpen(true)}
+                                                className="btn bg-white text-slate-900 border-none hover:bg-slate-100 py-3 px-8 text-sm font-bold shadow-lg flex items-center justify-center gap-2"
                                             >
-                                                <Trash2 size={18} />
+                                                <Edit3 size={16} /> Edit Split Details
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsSplitEnabled(false)}
+                                                className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-red-400 transition-colors"
+                                            >
+                                                Discard Splits
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Note (Optional)</label>
+                                <textarea
+                                    className="input-field min-h-[80px]"
+                                    placeholder="Add a memo..."
+                                    value={form.note}
+                                    onChange={e => setForm({ ...form, note: e.target.value })}
+                                />
                             </div>
 
-                            <button onClick={addSplit} className="w-full py-6 mt-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl text-slate-400 font-bold hover:border-primary/40 hover:text-primary transition-all">
-                                + Add Account Split
-                            </button>
-
-                            <div className="mt-8 flex items-center justify-between p-6 bg-slate-900 text-white rounded-3xl">
+                            {form.type !== 'TRANSFER' && (
                                 <div>
-                                    <span className="text-xs uppercase font-bold opacity-60 block">Total Allocated</span>
-                                    <span className="text-2xl font-black">Rs. {splits.reduce((acc, s) => acc + (parseFloat(s.amount) || 0), 0).toLocaleString()}</span>
+                                    <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Receipt / Attachment</label>
+                                    <input
+                                        type="file"
+                                        className="text-sm block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                        onChange={e => setImage(e.target.files ? e.target.files[0] : null)}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="pt-4">
+                                {(() => {
+                                    let isFormValid = false;
+                                    if (isSplitEnabled) {
+                                        isFormValid = splits.length > 0 && splits.every((s: any) => {
+                                            const basic = !!s.account && !!s.amount;
+                                            if (modalMode === 'STANDARD') {
+                                                return basic && (form.type === 'INCOME' ? !!s.income_source : !!s.expense_category);
+                                            }
+                                            if (modalMode === 'LOAN') {
+                                                const requiresLoan = ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(s.type);
+                                                return basic && (requiresLoan ? !!s.loan : true);
+                                            }
+                                            return basic;
+                                        });
+                                    } else {
+                                        const basic = !!form.account && !!form.amount;
+                                        if (modalMode === 'TRANSFER') {
+                                            isFormValid = basic && !!form.to_account;
+                                        } else if (modalMode === 'STANDARD') {
+                                            isFormValid = basic && (form.type === 'INCOME' ? !!form.income_source : !!form.expense_category);
+                                        } else if (modalMode === 'LOAN') {
+                                            const requiresLoan = ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(form.type);
+                                            isFormValid = basic && !!form.contact && !!form.contact_account && (requiresLoan ? !!form.loan : true);
+                                        }
+                                    }
+
+                                    return (
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary w-full py-4 text-lg shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={!isFormValid}
+                                        >
+                                            Complete Record
+                                        </button>
+                                    );
+                                })()}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Split Modal */}
+            {isSplitModalOpen && (
+                <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+                    <div className="card w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h2 className="text-3xl font-black uppercase tracking-tighter">Split Manager</h2>
+                                <p className="text-slate-500 text-sm">Distribute the transaction across your accounts</p>
+                            </div>
+                            <button onClick={() => setIsSplitModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full dark:hover:bg-slate-800">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="grid gap-6">
+                            {splits.map((s: any, idx: number) => (
+                                <div key={idx} className="relative group/card animate-in fade-in slide-in-from-bottom-4 duration-300" style={{ animationDelay: `${idx * 50}ms` }}>
+                                    <div className="card p-0 overflow-hidden border-2 border-slate-100 dark:border-slate-800 hover:border-primary/20 transition-all duration-300 rounded-[32px]">
+                                        <div className="flex flex-col md:flex-row">
+                                            {/* Left Section: Account & Type */}
+                                            <div className="md:w-1/2 p-6 bg-slate-50/50 dark:bg-slate-800/30 border-r border-slate-100 dark:border-slate-800">
+                                                <div className="grid grid-cols-1 gap-6">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <WalletCards size={14} className="text-primary" />
+                                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Source Account</label>
+                                                        </div>
+                                                        <select
+                                                            className="input-field text-sm font-bold bg-white dark:bg-slate-900 border-slate-200"
+                                                            value={s.account}
+                                                            onChange={e => {
+                                                                const newSplits = [...splits];
+                                                                newSplits[idx].account = e.target.value;
+                                                                setSplits(newSplits);
+                                                            }}
+                                                            required
+                                                        >
+                                                            <option value="">-- Select --</option>
+                                                            {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <Filter size={14} className="text-primary" />
+                                                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Entry Type</label>
+                                                            </div>
+                                                            <select
+                                                                className="input-field text-xs font-bold bg-white dark:bg-slate-900 border-slate-200"
+                                                                value={modalMode === 'LOAN' ? s.type : form.type}
+                                                                disabled={modalMode === 'STANDARD'}
+                                                                onChange={e => {
+                                                                    const newSplits = [...splits];
+                                                                    newSplits[idx].type = e.target.value;
+                                                                    setSplits(newSplits);
+                                                                }}
+                                                            >
+                                                                {modalMode === 'STANDARD' ? (
+                                                                    <option value={form.type}>{form.type}</option>
+                                                                ) : (
+                                                                    TX_TYPES.filter(t => ['LOAN_TAKEN', 'MONEY_LENT', 'LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(t.value)).map(t => <option key={t.value} value={t.value}>{t.label}</option>)
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <Plus size={14} className="text-primary" />
+                                                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Category/Source</label>
+                                                            </div>
+                                                            {modalMode === 'STANDARD' ? (
+                                                                <select
+                                                                    className="input-field text-xs font-bold bg-white dark:bg-slate-900 border-slate-200"
+                                                                    value={(form.type === 'INCOME' || s.type === 'INCOME') ? s.income_source : s.expense_category}
+                                                                    onChange={e => {
+                                                                        const newSplits = [...splits];
+                                                                        if (form.type === 'INCOME' || s.type === 'INCOME') newSplits[idx].income_source = e.target.value;
+                                                                        else newSplits[idx].expense_category = e.target.value;
+                                                                        setSplits(newSplits);
+                                                                    }}
+                                                                    required
+                                                                >
+                                                                    <option value="">-- Select --</option>
+                                                                    {(form.type === 'INCOME' || s.type === 'INCOME')
+                                                                        ? data.incomeSources.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                                                        : data.expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                                                    }
+                                                                </select>
+                                                            ) : (
+                                                                <div className="h-10 flex items-center text-xs text-slate-400 italic bg-white dark:bg-slate-900 rounded-2xl px-4 border border-slate-100 dark:border-slate-800">
+                                                                    Auto-Linked
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Right Section: Amount & Action */}
+                                            <div className="md:w-1/2 p-8 flex flex-col justify-center bg-white dark:bg-slate-900">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="flex-1">
+                                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3 block">Allocated Amount</label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">Rs.</span>
+                                                            <input
+                                                                type="number"
+                                                                className="input-field pl-12 h-16 text-2xl font-black bg-slate-50 focus:bg-white border-transparent"
+                                                                placeholder="0.00"
+                                                                value={s.amount}
+                                                                onChange={e => {
+                                                                    const newSplits = [...splits];
+                                                                    newSplits[idx].amount = e.target.value;
+                                                                    setSplits(newSplits);
+                                                                }}
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSplits(splits.filter((_, i) => i !== idx))}
+                                                        className="mt-6 p-4 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
+                                                    >
+                                                        <Trash2 size={24} />
+                                                    </button>
+                                                </div>
+
+                                                {modalMode === 'LOAN' && ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(s.type) && (
+                                                    <div className="mt-4 animate-in slide-in-from-top-2">
+                                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 block">Loan Reference</label>
+                                                        <select
+                                                            className="input-field text-xs bg-slate-50"
+                                                            value={s.loan}
+                                                            onChange={e => {
+                                                                const newSplits = [...splits];
+                                                                newSplits[idx].loan = e.target.value;
+                                                                setSplits(newSplits);
+                                                            }}
+                                                            required
+                                                        >
+                                                            <option value="">-- Choose specific record --</option>
+                                                            {data.loans.filter(l => l.contact?.toString() === form.contact && (s.type === 'LOAN_REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
+                                                                <option key={l.id} value={l.id}>Rs. {parseFloat(l.remaining_amount).toLocaleString()} remaining</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-10 p-2 bg-slate-100 dark:bg-slate-800/50 rounded-[40px] flex flex-col md:flex-row items-stretch gap-2">
+                            <button onClick={addSplit} className="flex-1 py-6 bg-white dark:bg-slate-900 rounded-[32px] text-slate-900 dark:text-white font-black uppercase tracking-widest text-xs hover:bg-primary hover:text-white transition-all shadow-sm flex items-center justify-center gap-3">
+                                <Plus size={18} /> Add Another Account
+                            </button>
+                            <div className="flex-1 bg-slate-900 dark:bg-slate-950 rounded-[32px] p-6 text-white flex items-center justify-between shadow-xl">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Allocated</p>
+                                    <h3 className="text-2xl font-black italic tracking-tighter">Rs. {splits.reduce((acc: number, s: any) => acc + (parseFloat(s.amount) || 0), 0).toLocaleString()}</h3>
                                 </div>
                                 <button
                                     onClick={() => setIsSplitModalOpen(false)}
-                                    className="btn btn-primary px-10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={splits.length === 0 || !splits.every(s => {
+                                    className="btn btn-primary px-10 rounded-2xl h-12 shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={splits.length === 0 || !splits.every((s: any) => {
                                         const basic = !!s.account && !!s.amount;
                                         if (modalMode === 'STANDARD') {
                                             return basic && (form.type === 'INCOME' ? !!s.income_source : !!s.expense_category);
@@ -1007,35 +1066,32 @@ export default function TransactionsPage() {
                                         return basic;
                                     })}
                                 >
-                                    Confirm
+                                    Apply Config
                                 </button>
                             </div>
                         </div>
                     </div>
-                )
-            }
+                </div>
+            )}
 
+            {confirmDelete && (
+                <ConfirmModal
+                    isOpen={!!confirmDelete}
+                    title="Reverse Transaction?"
+                    message="This will delete the record and automatically reverse all balance and loan updates. Proceed?"
+                    onConfirm={handleDelete}
+                    onCancel={() => setConfirmDelete(null)}
+                />
+            )}
 
-            {
-                confirmDelete && (
-                    <ConfirmModal
-                        isOpen={!!confirmDelete}
-                        title="Reverse Transaction?"
-                        message="This will delete the record and automatically reverse all balance and loan updates. Proceed?"
-                        onConfirm={handleDelete}
-                        onCancel={() => setConfirmDelete(null)}
-                    />
-                )
-            }
-
-            {
-                previewImage && (
-                    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
-                        <button onClick={() => setPreviewImage(null)} className="absolute top-8 right-8 text-white p-4 hover:bg-white/10 rounded-full"><X size={32} /></button>
-                        <img src={previewImage} className="max-w-full max-h-full object-contain shadow-2xl rounded-2xl" alt="Attachment" />
-                    </div>
-                )
-            }
-        </div >
+            {previewImage && (
+                <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
+                    <button onClick={() => setPreviewImage(null)} className="absolute top-8 right-8 text-white p-4 hover:bg-white/10 rounded-full">
+                        <X size={32} />
+                    </button>
+                    <img src={previewImage} className="max-w-full max-h-full object-contain shadow-2xl rounded-2xl" alt="Attachment" />
+                </div>
+            )}
+        </div>
     );
 }
