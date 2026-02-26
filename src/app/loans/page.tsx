@@ -507,7 +507,7 @@ export default function LoansPage() {
                 title="Delete Loan Record"
                 message="Are you sure? This will permanently delete the loan record. This action cannot be undone."
                 confirmText="Yes, Delete"
-                onConfirm={() => confirmDelete !== null && deleteLoan(confirmDelete)}
+                onConfirm={() => { if (confirmDelete !== null) deleteLoan(confirmDelete); }}
                 onCancel={() => setConfirmDelete(null)}
             />
         </div>

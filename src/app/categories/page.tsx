@@ -128,9 +128,9 @@ export default function CategoriesPage() {
                         <div className="grid gap-3">
                             {expenseCategories.map(cat => (
                                 <div key={cat.id} className="card flex items-center justify-between p-4 group hover:border-red-500/30 transition-all">
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-slate-800 dark:text-slate-100">{cat.name}</h3>
-                                        {cat.description && <p className="text-xs text-slate-500 mt-1">{cat.description}</p>}
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-slate-800 dark:text-slate-100 break-words">{cat.name}</h3>
+                                        {cat.description && <p className="text-xs text-slate-500 mt-1 break-words">{cat.description}</p>}
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => handleOpenModal('EXPENSE', cat)} className="p-2 text-slate-400 hover:text-primary transition-colors">
@@ -167,9 +167,9 @@ export default function CategoriesPage() {
                         <div className="grid gap-3">
                             {incomeSources.map(cat => (
                                 <div key={cat.id} className="card flex items-center justify-between p-4 group hover:border-green-500/30 transition-all">
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-slate-800 dark:text-slate-100">{cat.name}</h3>
-                                        {cat.description && <p className="text-xs text-slate-500 mt-1">{cat.description}</p>}
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-slate-800 dark:text-slate-100 break-words">{cat.name}</h3>
+                                        {cat.description && <p className="text-xs text-slate-500 mt-1 break-words">{cat.description}</p>}
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => handleOpenModal('INCOME', cat)} className="p-2 text-slate-400 hover:text-primary transition-colors">

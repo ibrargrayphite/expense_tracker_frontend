@@ -649,7 +649,8 @@ export default function ContactsPage() {
                 title="Delete Contact"
                 message="Are you sure? This will permanently delete this contact and all their associated accounts."
                 confirmText="Yes, Delete"
-                onConfirm={() => confirmDeleteContact !== null && deleteContact(confirmDeleteContact)}
+                onConfirm={() => { if (confirmDeleteContact !== null) deleteContact(confirmDeleteContact); }}
+
                 onCancel={() => setConfirmDeleteContact(null)}
             />
             <ConfirmModal
@@ -657,7 +658,7 @@ export default function ContactsPage() {
                 title="Remove Account"
                 message="Are you sure you want to remove this account from the contact?"
                 confirmText="Yes, Remove"
-                onConfirm={() => confirmDeleteAccount !== null && deleteAccount(confirmDeleteAccount)}
+                onConfirm={() => { if (confirmDeleteAccount !== null) deleteAccount(confirmDeleteAccount); }}
                 onCancel={() => setConfirmDeleteAccount(null)}
             />
         </div >
