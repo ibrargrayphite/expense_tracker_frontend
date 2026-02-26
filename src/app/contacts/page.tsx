@@ -368,19 +368,19 @@ export default function ContactsPage() {
                             <div className="grid grid-cols-3 gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 mt-2">
                                 <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Total Lent</p>
-                                    <p className="text-sm font-black text-emerald-500">Rs. {contact.loan_stats.total_lent.toLocaleString()}</p>
+                                    <p className="text-sm font-black text-emerald-500">Rs. {(contact.loan_stats?.total_lent || 0).toLocaleString()}</p>
                                 </div>
                                 <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Borrowed</p>
-                                    <p className="text-sm font-black text-rose-500">Rs. {contact.loan_stats.total_loaned.toLocaleString()}</p>
+                                    <p className="text-sm font-black text-rose-500">Rs. {(contact.loan_stats?.total_loaned || 0).toLocaleString()}</p>
                                 </div>
-                                <div className={`text-center p-2 rounded-xl shadow-sm border ${contact.loan_stats.net_balance >= 0
+                                <div className={`text-center p-2 rounded-xl shadow-sm border ${(contact.loan_stats?.net_balance || 0) >= 0
                                     ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
                                     : 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20'
                                     }`}>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Net Balance</p>
-                                    <p className={`text-sm font-black ${contact.loan_stats.net_balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                        {contact.loan_stats.net_balance >= 0 ? '+' : ''} Rs. {contact.loan_stats.net_balance.toLocaleString()}
+                                    <p className={`text-sm font-black ${(contact.loan_stats?.net_balance || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {(contact.loan_stats?.net_balance || 0) >= 0 ? '+' : ''} Rs. {(contact.loan_stats?.net_balance || 0).toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -398,7 +398,7 @@ export default function ContactsPage() {
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {contact.accounts.map((acc) => (
+                                    {contact.accounts?.map((acc) => (
                                         <div key={acc.id} className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl flex items-center justify-between group border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all">
                                             <div>
                                                 <p className="font-bold text-[13px]">{acc.account_name} ({acc.bank_name})</p>
@@ -414,7 +414,7 @@ export default function ContactsPage() {
                                             </div>
                                         </div>
                                     ))}
-                                    {contact.accounts.length === 0 && (
+                                    {(!contact.accounts || contact.accounts.length === 0) && (
                                         <p className="text-[11px] text-secondary italic opacity-60">No linked personal accounts.</p>
                                     )}
                                 </div>
