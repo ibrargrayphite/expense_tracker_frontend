@@ -7,11 +7,11 @@ interface ConfirmModalProps {
     isOpen: boolean;
     title: string;
     message: string;
-    onConfirm: () => void;
+    onConfirm: () => void | Promise<void>;
     onCancel: () => void;
     confirmText?: string;
     cancelText?: string;
-    type?: 'danger' | 'warning' | 'primary';
+    variant?: 'danger' | 'warning' | 'primary';
 }
 
 export default function ConfirmModal({
@@ -22,7 +22,7 @@ export default function ConfirmModal({
     onCancel,
     confirmText = 'Confirm',
     cancelText = 'Cancel',
-    type = 'danger'
+    variant = 'danger'
 }: ConfirmModalProps) {
     if (!isOpen) return null;
 
@@ -31,9 +31,9 @@ export default function ConfirmModal({
             <div className="card w-full max-w-md animate-fade-in shadow-2xl border-t-4 border-red-500">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${type === 'danger' ? 'bg-red-500/10 text-red-500' :
-                                type === 'warning' ? 'bg-yellow-500/10 text-yellow-500' :
-                                    'bg-primary/10 text-primary'
+                        <div className={`p-2 rounded-lg ${variant === 'danger' ? 'bg-red-500/10 text-red-500' :
+                            variant === 'warning' ? 'bg-yellow-500/10 text-yellow-500' :
+                                'bg-primary/10 text-primary'
                             }`}>
                             <AlertTriangle size={20} />
                         </div>
@@ -57,9 +57,9 @@ export default function ConfirmModal({
                     </button>
                     <button
                         onClick={onConfirm}
-                        className={`btn flex-1 shadow-lg ${type === 'danger' ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20' :
-                                type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-yellow-500/20' :
-                                    'btn-primary shadow-primary/20'
+                        className={`btn flex-1 shadow-lg ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20' :
+                            variant === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-yellow-500/20' :
+                                'btn-primary shadow-primary/20'
                             }`}
                     >
                         {confirmText}

@@ -153,13 +153,6 @@ export default function LoansPage() {
         <div className="min-h-screen">
             <Navbar />
             <main className="max-w-5xl mx-auto px-4 mt-8 space-y-8 animate-fade-in">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-3xl font-bold">Loans & Lending</h1>
-                    <button onClick={() => handleOpenModal()} className="btn btn-primary">
-                        <Plus size={20} /> New Record
-                    </button>
-                </div>
-
                 {/* Modern Filter & Sort Bar */}
                 <div className="card overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md mb-6 transition-all duration-300">
                     <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30">
@@ -303,14 +296,6 @@ export default function LoansPage() {
                                                 <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
                                                 <p className="text-xl font-bold text-red-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleOpenModal(loan)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
-                                                    <Edit3 size={20} />
-                                                </button>
-                                                <button onClick={() => setConfirmDelete(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                                                    <Trash2 size={20} />
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
@@ -343,14 +328,6 @@ export default function LoansPage() {
                                                 <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
                                                 <p className="text-xl font-bold text-green-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleOpenModal(loan)} className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors">
-                                                    <Edit3 size={20} />
-                                                </button>
-                                                <button onClick={() => setConfirmDelete(loan.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                                                    <Trash2 size={20} />
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
@@ -380,11 +357,6 @@ export default function LoansPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className="font-bold text-sm">Rs. {parseFloat(loan.total_amount).toLocaleString()}</p>
-                                </div>
-                                <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
-                                    <button onClick={() => setConfirmDelete(loan.id)} className="p-1 text-red-500 hover:bg-red-500/10 rounded transition-colors">
-                                        <Trash2 size={14} />
-                                    </button>
                                 </div>
                             </div>
                         ))}

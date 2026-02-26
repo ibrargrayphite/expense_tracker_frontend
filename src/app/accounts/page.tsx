@@ -385,20 +385,6 @@ export default function AccountsPage() {
                                     </div>
                                 </>
                             )}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Current Balance (Rs.)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    className="input-field"
-                                    placeholder="0.00"
-                                    value={form.balance}
-                                    onChange={e => setForm({ ...form, balance: e.target.value })}
-                                    required
-                                    disabled={!!editingAccount}
-                                />
-                                {editingAccount && <p className="text-[10px] text-orange-500 mt-1 font-medium">Balance cannot be modified directly. Use transactions to update balance.</p>}
-                            </div>
                             <button type="submit" className="btn btn-primary w-full mt-4">
                                 {editingAccount ? 'Update Account' : 'Save Account'}
                             </button>
@@ -409,9 +395,10 @@ export default function AccountsPage() {
             <ConfirmModal
                 isOpen={confirmDelete !== null}
                 title="Delete Account"
-                message="Are you sure? This will permanently delete the account and all associated records. This action cannot be undone."
-                confirmText="Yes, Delete"
-                onConfirm={() => confirmDelete !== null && deleteAccount(confirmDelete)}
+                message="⚠️ This will permanently delete this account and ALL associated transaction records. This action cannot be undone."
+                confirmText="Delete Permanently"
+                variant="danger"
+                onConfirm={() => { if (confirmDelete !== null) deleteAccount(confirmDelete); }}
                 onCancel={() => setConfirmDelete(null)}
             />
         </div>
