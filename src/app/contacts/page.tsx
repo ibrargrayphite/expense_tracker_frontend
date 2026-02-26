@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, Trash2, Edit3, X, Phone, User as UserIcon, CreditCard, Search, Filter, HandCoins, History as HistoryIcon, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit3, Mail, X, Phone, User as UserIcon, CreditCard, Search, Filter, HandCoins, History as HistoryIcon, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -341,7 +341,7 @@ export default function ContactsPage() {
                                             )}
                                             {contact.email && (
                                                 <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
-                                                    <X size={14} className="text-primary" /> {contact.email}
+                                                    <Mail size={14} className="text-primary" /> {contact.email}
                                                 </p>
                                             )}
                                         </div>
