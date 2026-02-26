@@ -70,6 +70,7 @@ interface TransactionAccount {
     account: number;
     account_name: string;
     bank_name: string;
+    account_number: string;
     splits: TransactionSplit[];
 }
 
@@ -77,6 +78,10 @@ interface Transaction {
     id: number;
     contact: number | null;
     contact_name: string | null;
+    contact_account?: number | null;
+    contact_account_name?: string | null;
+    contact_account_number?: string | null;
+    contact_bank_name?: string | null;
     note: string;
     date: string;
     expense_category: number | null;
@@ -93,8 +98,12 @@ interface InternalTransaction {
     id: number;
     from_account: number;
     from_account_name: string;
+    from_account_number: string;
+    from_bank_name: string;
     to_account: number;
     to_account_name: string;
+    to_account_number: string;
+    to_bank_name: string;
     amount: string;
     note: string;
     date: string;
@@ -402,127 +411,206 @@ export default function TransactionsPage() {
                     </div>
                 </div>
 
-                {/* Filters */}
-                <div className="card p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-none shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
+                {/* Consistent Filter & Sort Bar */}
+                <div className="card overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md mb-6 transition-all duration-300">
+                    <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30">
                         <div className="flex items-center gap-2 text-primary">
                             <Filter size={18} />
-                            <span className="font-bold uppercase tracking-wider text-xs">Filters</span>
+                            <h3 className="font-bold text-slate-800 dark:text-slate-100">Filter Transactions</h3>
                         </div>
-                        <button onClick={() => setShowFilters(!showFilters)} className="text-xs font-bold text-primary hover:underline">
-                            {showFilters ? 'Hide' : 'Show Options'}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {(search || filterType || filterAccount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
+                                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold">
+                                    Filters Applied
+                                </span>
+                            )}
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className="btn btn-sm px-4 rounded-full btn-primary shadow-lg shadow-primary/20"
+                            >
+                                {showFilters ? 'Hide Panel' : 'Filter Options'}
+                            </button>
+                        </div>
                     </div>
 
-                    {showFilters && (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2">
-                            <input
-                                type="text"
-                                placeholder="Search notes..."
-                                className="input-field"
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                            />
-                            <select className="input-field" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                                <option value="">All Types</option>
-                                {TX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                            </select>
-                            <select className="input-field" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
-                                <option value="">All Accounts</option>
-                                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
-                            </select>
-                            <select className="input-field" value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
-                                <option value="date_desc">Newest First</option>
-                                <option value="date_asc">Oldest First</option>
-                                <option value="amount_desc">Highest Amount</option>
-                                <option value="amount_asc">Lowest Amount</option>
-                            </select>
-                        </div>
-                    )}
-                </div>
-
-                {/* List */}
-                <div className="space-y-4">
-                    {combinedTransactions.map(t => (
-                        <div key={`${t.is_internal ? 'int' : 'ext'}-${t.id}`} className="card group hover:border-primary/30 transition-all p-5">
-                            <div className="flex justify-between items-start">
-                                <div className="flex gap-4">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${t.is_internal
-                                        ? 'bg-blue-500/10 text-blue-500'
-                                        : (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type))) ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
-                                        }`}>
-                                        {t.is_internal ? <ArrowRightLeft size={24} /> : (
-                                            (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type)))
-                                                ? <ArrowUpRight size={24} />
-                                                : <ArrowDownLeft size={24} />
-                                        )}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                                                {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split Transaction' : (t as Transaction).accounts[0]?.splits[0]?.type.replace('_', ' ')}
-                                            </span>
-                                            <span className="text-[10px] font-bold text-slate-400">
-                                                {format(new Date(t.date), 'MMM dd, yyyy • hh:mm a')}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">
-                                                {t.is_internal
-                                                    ? `Transfer: ${(t as any).from_account_name} ➔ ${(t as any).to_account_name}`
-                                                    : (t as Transaction).note || (t as Transaction).expense_category_name || (t as Transaction).income_source_name || 'No Description'}
-                                            </h3>
-                                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                                                {!t.is_internal && (t as Transaction).contact_name && (
-                                                    <span className="text-[10px] font-bold py-1 px-2 rounded-lg bg-blue-500/5 text-blue-500 border border-blue-500/10">
-                                                        👤 {(t as Transaction).contact_name}
-                                                    </span>
-                                                )}
-                                                {!t.is_internal && (t as Transaction).expense_category_name && (
-                                                    <span className="text-[10px] font-bold py-1 px-2 rounded-lg bg-orange-500/5 text-orange-500 border border-orange-500/10">
-                                                        📁 {(t as Transaction).expense_category_name}
-                                                    </span>
-                                                )}
-                                                {!t.is_internal && (t as Transaction).income_source_name && (
-                                                    <span className="text-[10px] font-bold py-1 px-2 rounded-lg bg-green-500/5 text-green-600 border border-green-500/10">
-                                                        💰 {(t as Transaction).income_source_name}
-                                                    </span>
-                                                )}
-                                                {!t.is_internal && (t as Transaction).accounts.length > 1 && (
-                                                    <span className="text-[10px] font-bold py-1 px-2 rounded-lg bg-purple-500/5 text-purple-600 border border-purple-500/10">
-                                                        🔀 Split across {(t as Transaction).accounts.length} accounts
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right space-y-2">
-                                    <div className={`text-xl font-black ${t.is_internal
-                                        ? 'text-slate-500'
-                                        : (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type))) ? 'text-green-600' : 'text-red-500'
-                                        }`}>
-                                        {t.is_internal ? '' : (
-                                            (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type))) ? '+' : '-'
-                                        )}
-                                        Rs. {parseFloat((t as any).total_amount || (t as any).amount).toLocaleString()}
-                                    </div>
-                                    <div className="flex items-center justify-end gap-2">
-                                        {(t as any).image && (
-                                            <button onClick={() => setPreviewImage((t as any).image)} className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                                <ImageIcon size={18} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                    <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'max-h-[1000px] opacity-100 p-6' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Search Notes</label>
+                                <input
+                                    type="text"
+                                    placeholder="Keywords..."
+                                    className="input-field h-11"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type</label>
+                                <select className="input-field h-11" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                                    <option value="">All Types</option>
+                                    {TX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account</label>
+                                <select className="input-field h-11" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
+                                    <option value="">All Accounts</option>
+                                    {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort Order</label>
+                                <select className="input-field h-11" value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
+                                    <option value="date_desc">Newest First</option>
+                                    <option value="date_asc">Oldest First</option>
+                                    <option value="amount_desc">Highest Amount</option>
+                                    <option value="amount_asc">Lowest Amount</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">From Date</label>
+                                <input type="date" className="input-field h-11" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">To Date</label>
+                                <input type="date" className="input-field h-11" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
                             </div>
                         </div>
-                    ))}
-                    {combinedTransactions.length === 0 && (
-                        <div className="text-center py-20 text-slate-400 border-2 border-dashed rounded-3xl">
-                            No transactions match your criteria.
+
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <span>{combinedTransactions.length} transactions match your criteria</span>
+                            {(search || filterType || filterAccount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
+                                <button
+                                    onClick={() => {
+                                        setSearch('');
+                                        setFilterType('');
+                                        setFilterAccount('');
+                                        setFilterDateFrom('');
+                                        setFilterDateTo('');
+                                        setSortBy('date_desc');
+                                    }}
+                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                >
+                                    Clear all filters
+                                </button>
+                            )}
                         </div>
-                    )}
+                    </div>
+                </div>
+
+                {/* Tabular List */}
+                <div className="card overflow-hidden border-none shadow-sm bg-white dark:bg-slate-900">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Date</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">From</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">To</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Type</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Amount</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Note</th>
+                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Receipt</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {combinedTransactions.map(t => {
+                                    const isIncome = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type)));
+                                    const isExpense = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['EXPENSE', 'MONEY_LENT', 'LOAN_REPAYMENT'].includes(s.type)));
+
+                                    let fromDisplay = '-';
+                                    let toDisplay = '-';
+
+                                    if (t.is_internal) {
+                                        const it = t as InternalTransaction;
+                                        fromDisplay = `${it.from_account_name} - ${it.from_account_number}`;
+                                        toDisplay = `${it.to_account_name} - ${it.to_account_number}`;
+                                    } else {
+                                        const xt = t as Transaction;
+                                        const userAccounts = xt.accounts.map(acc => `${acc.account_name} - ${acc.account_number}`).join(', ');
+                                        const contactAccount = xt.contact_account_name ? `${xt.contact_account_name} - ${xt.contact_account_number}` : (xt.contact_name || 'Deleted Contact Account');
+                                        console.log(xt.contact_account_number);
+
+
+                                        const type = xt.accounts[0]?.splits[0]?.type;
+                                        if (['EXPENSE'].includes(type)) {
+                                            fromDisplay = userAccounts;
+                                            toDisplay = '-';
+                                        } else if (['INCOME'].includes(type)) {
+                                            fromDisplay = '-';
+                                            toDisplay = userAccounts;
+                                        } else if (['LOAN_TAKEN', 'REIMBURSEMENT'].includes(type)) {
+                                            fromDisplay = contactAccount;
+                                            toDisplay = userAccounts;
+                                        } else if (['LOAN_REPAYMENT', 'MONEY_LENT'].includes(type)) {
+                                            fromDisplay = userAccounts;
+                                            toDisplay = contactAccount;
+                                        }
+                                    }
+
+                                    return (
+                                        <tr key={`${t.is_internal ? 'int' : 'ext'}-${t.id}`} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                            <td className="p-4 whitespace-nowrap">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{format(new Date(t.date), 'MMM dd, yyyy')}</span>
+                                                    <span className="text-[10px] text-slate-400">{format(new Date(t.date), 'hh:mm a')}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 min-w-[150px]">
+                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{fromDisplay}</span>
+                                            </td>
+                                            <td className="p-4 min-w-[150px]">
+                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{toDisplay}</span>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${t.is_internal ? 'bg-blue-500/10 text-blue-500' :
+                                                    isIncome ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+                                                    }`}>
+                                                    {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split' : (t as Transaction).accounts[0]?.splits[0]?.type.replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <span className={`text-sm font-black ${t.is_internal ? 'text-slate-500' :
+                                                    isIncome ? 'text-green-600' : 'text-red-500'
+                                                    }`}>
+                                                    {t.is_internal ? '' : isIncome ? '+' : '-'} Rs. {parseFloat((t as any).total_amount || (t as any).amount).toLocaleString()}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 italic">
+                                                    {(t as Transaction).expense_category_name || (t as Transaction).income_source_name || '-'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 max-w-[200px]">
+                                                <p className="text-xs text-slate-400 truncate" title={(t as Transaction).note}>
+                                                    {(t as Transaction).note || '-'}
+                                                </p>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                {(t as any).image ? (
+                                                    <button
+                                                        onClick={() => setPreviewImage((t as any).image)}
+                                                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                                    >
+                                                        <ImageIcon size={18} />
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-slate-300">-</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        {combinedTransactions.length === 0 && (
+                            <div className="text-center py-20 text-slate-400">
+                                No transactions match your criteria.
+                            </div>
+                        )}
+                    </div>
                 </div>
             </main >
 
