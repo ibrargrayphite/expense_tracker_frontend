@@ -385,7 +385,11 @@ export default function AccountsPage() {
                                     </div>
                                 </>
                             )}
-                            <button type="submit" className="btn btn-primary w-full mt-4">
+                            <button
+                                type="submit"
+                                className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!form.account_name || (form.bank_name !== 'Cash' && !form.account_number)}
+                            >
                                 {editingAccount ? 'Update Account' : 'Save Account'}
                             </button>
                         </form>

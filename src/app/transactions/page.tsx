@@ -24,6 +24,7 @@ interface Account {
     id: number;
     bank_name: string;
     account_name: string;
+    account_number: string;
     balance: string;
 }
 
@@ -428,7 +429,7 @@ export default function TransactionsPage() {
                             </select>
                             <select className="input-field" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
                                 <option value="">All Accounts</option>
-                                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_name}</option>)}
+                                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
                             </select>
                             <select className="input-field" value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
                                 <option value="date_desc">Newest First</option>
@@ -610,7 +611,7 @@ export default function TransactionsPage() {
                                                     {form.type === 'TRANSFER' ? 'From Account' : 'Account'}
                                                 </label>
                                                 <select className="input-field py-3" value={form.account} onChange={e => setForm({ ...form, account: e.target.value })} required>
-                                                    {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_name}</option>)}
+                                                    {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
                                                 </select>
                                             </div>
                                             <div>
@@ -619,7 +620,7 @@ export default function TransactionsPage() {
                                                         <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">To Account</label>
                                                         <select className="input-field py-3" value={form.to_account} onChange={e => setForm({ ...form, to_account: e.target.value })} required>
                                                             <option value="">-- Select Recipient --</option>
-                                                            {data.accounts.filter(a => a.id.toString() !== form.account).map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_name}</option>)}
+                                                            {data.accounts.filter(a => a.id.toString() !== form.account).map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
                                                         </select>
                                                     </>
                                                 ) : (
@@ -726,9 +727,42 @@ export default function TransactionsPage() {
                                 )}
 
                                 <div className="pt-4">
-                                    <button type="submit" className="btn btn-primary w-full py-4 text-lg shadow-2xl shadow-primary/30">
-                                        Complete Record
-                                    </button>
+                                    {(() => {
+                                        let isFormValid = false;
+                                        if (isSplitEnabled) {
+                                            isFormValid = splits.length > 0 && splits.every(s => {
+                                                const basic = !!s.account && !!s.amount;
+                                                if (modalMode === 'STANDARD') {
+                                                    return basic && (form.type === 'INCOME' ? !!s.income_source : !!s.expense_category);
+                                                }
+                                                if (modalMode === 'LOAN') {
+                                                    const requiresLoan = ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(s.type);
+                                                    return basic && (requiresLoan ? !!s.loan : true);
+                                                }
+                                                return basic;
+                                            });
+                                        } else {
+                                            const basic = !!form.account && !!form.amount;
+                                            if (modalMode === 'TRANSFER') {
+                                                isFormValid = basic && !!form.to_account;
+                                            } else if (modalMode === 'STANDARD') {
+                                                isFormValid = basic && (form.type === 'INCOME' ? !!form.income_source : !!form.expense_category);
+                                            } else if (modalMode === 'LOAN') {
+                                                const requiresLoan = ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(form.type);
+                                                isFormValid = basic && !!form.contact && !!form.contact_account && (requiresLoan ? !!form.loan : true);
+                                            }
+                                        }
+
+                                        return (
+                                            <button
+                                                type="submit"
+                                                className="btn btn-primary w-full py-4 text-lg shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                disabled={!isFormValid}
+                                            >
+                                                Complete Record
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                             </form>
                         </div>
@@ -765,7 +799,7 @@ export default function TransactionsPage() {
                                                 required
                                             >
                                                 <option value="">-- Select --</option>
-                                                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_name}</option>)}
+                                                {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
                                             </select>
                                         </div>
 
@@ -870,12 +904,29 @@ export default function TransactionsPage() {
                                     <span className="text-xs uppercase font-bold opacity-60 block">Total Allocated</span>
                                     <span className="text-2xl font-black">Rs. {splits.reduce((acc, s) => acc + (parseFloat(s.amount) || 0), 0).toLocaleString()}</span>
                                 </div>
-                                <button onClick={() => setIsSplitModalOpen(false)} className="btn btn-primary px-10">Confirm</button>
+                                <button
+                                    onClick={() => setIsSplitModalOpen(false)}
+                                    className="btn btn-primary px-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={splits.length === 0 || !splits.every(s => {
+                                        const basic = !!s.account && !!s.amount;
+                                        if (modalMode === 'STANDARD') {
+                                            return basic && (form.type === 'INCOME' ? !!s.income_source : !!s.expense_category);
+                                        }
+                                        if (modalMode === 'LOAN') {
+                                            const requiresLoan = ['LOAN_REPAYMENT', 'REIMBURSEMENT'].includes(s.type);
+                                            return basic && (requiresLoan ? !!s.loan : true);
+                                        }
+                                        return basic;
+                                    })}
+                                >
+                                    Confirm
+                                </button>
                             </div>
                         </div>
                     </div>
                 )
             }
+
 
             {
                 confirmDelete && (

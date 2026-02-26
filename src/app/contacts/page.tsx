@@ -573,7 +573,11 @@ export default function ContactsPage() {
                                         onChange={e => setForm({ ...form, email: e.target.value })}
                                     />
                                 </div>
-                                <button type="submit" className="btn btn-primary w-full mt-4">
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!form.first_name || !form.last_name || !form.phone1}
+                                >
                                     {editingContact ? 'Update Contact' : 'Save Contact'}
                                 </button>
                             </form>
@@ -639,7 +643,11 @@ export default function ContactsPage() {
                                         onChange={e => setAccountForm({ ...accountForm, iban: e.target.value })}
                                     />
                                 </div>
-                                <button type="submit" className="btn btn-primary w-full mt-4">
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!accountForm.account_name || !accountForm.account_number}
+                                >
                                     {editingAccount ? 'Update Account' : 'Add Account'}
                                 </button>
                             </form>

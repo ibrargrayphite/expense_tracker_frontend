@@ -222,7 +222,13 @@ export default function CategoriesPage() {
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary flex-1">Cancel</button>
-                                <button type="submit" className="btn btn-primary flex-1">Save Category</button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!form.name}
+                                >
+                                    Save Category
+                                </button>
                             </div>
                         </form>
                     </div>

@@ -575,7 +575,7 @@ export default function AuthPage() {
                             )}
                         </div>
 
-                        <button type="submit" className="auth-submit" disabled={loading}>
+                        <button type="submit" className="auth-submit" disabled={loading || !username || !password || (mode === 'register' && (!firstName || !lastName || !email || !confirmPassword))}>
                             {loading
                                 ? <><Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} /> Processing…</>
                                 : <>{mode === 'login' ? 'Sign In' : 'Create Account'} <ArrowRight size={17} /></>

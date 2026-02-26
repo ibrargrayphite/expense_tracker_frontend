@@ -216,7 +216,7 @@ export default function ForgotPasswordPage() {
                                     </div>
                                 </div>
 
-                                <button type="submit" className="auth-submit" disabled={loading}>
+                                <button type="submit" className="auth-submit" disabled={loading || !email}>
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Send Reset Link'}
                                 </button>
                             </form>
