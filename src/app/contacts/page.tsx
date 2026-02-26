@@ -10,7 +10,6 @@ import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 
 const BANK_OPTIONS = [
-    'Cash',
     'JazzCash',
     'EasyPaisa',
     'Nayapay',
@@ -73,7 +72,7 @@ export default function ContactsPage() {
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [form, setForm] = useState({ first_name: '', last_name: '', phone1: '', phone2: '', email: '' });
     const [editingAccount, setEditingAccount] = useState<ContactAccount | null>(null);
-    const [accountForm, setAccountForm] = useState({ bank_name: 'Cash', account_name: '', account_number: '', iban: '' });
+    const [accountForm, setAccountForm] = useState({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '' });
     const [confirmDeleteContact, setConfirmDeleteContact] = useState<number | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
     const [expandedContacts, setExpandedContacts] = useState<Record<number, boolean>>({});
@@ -131,7 +130,7 @@ export default function ContactsPage() {
             });
         } else {
             setEditingAccount(null);
-            setAccountForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '' });
+            setAccountForm({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '' });
         }
         setIsAccountModalOpen(true);
     };
@@ -171,7 +170,7 @@ export default function ContactsPage() {
             }
             setIsAccountModalOpen(false);
             setEditingAccount(null);
-            setAccountForm({ bank_name: 'Cash', account_name: '', account_number: '', iban: '' });
+            setAccountForm({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '' });
             fetchContacts();
         } catch (err) {
             console.error(err);
@@ -405,12 +404,16 @@ export default function ContactsPage() {
                                                 <p className="text-[10px] text-secondary">{acc.account_number}{acc.iban ? ` | IBAN: ${acc.iban}` : ''}</p>
                                             </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1 text-slate-400 hover:text-primary transition-colors">
-                                                    <Edit3 size={12} />
-                                                </button>
-                                                <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
-                                                    <Trash2 size={12} />
-                                                </button>
+                                                {acc.bank_name !== "CASH" && (
+                                                    <>
+                                                        <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1 text-slate-400 hover:text-primary transition-colors">
+                                                            <Edit3 size={12} />
+                                                        </button>
+                                                        <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
