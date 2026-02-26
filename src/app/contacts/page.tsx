@@ -646,19 +646,28 @@ export default function ContactsPage() {
             }
             <ConfirmModal
                 isOpen={confirmDeleteContact !== null}
-                title="Delete Contact"
-                message="Are you sure? This will permanently delete this contact and all their associated accounts."
-                confirmText="Yes, Delete"
-                onConfirm={() => { if (confirmDeleteContact !== null) deleteContact(confirmDeleteContact); }}
-
+                title="⚠️ Delete Contact Permanently"
+                message="This will permanently delete this contact and ALL of their associated accounts as well as Loan Records. This action is irreversible and cannot be undone."
+                confirmText="Delete Permanently"
+                variant="danger"
+                onConfirm={() => {
+                    if (confirmDeleteContact !== null) {
+                        deleteContact(confirmDeleteContact);
+                    }
+                }}
                 onCancel={() => setConfirmDeleteContact(null)}
             />
             <ConfirmModal
                 isOpen={confirmDeleteAccount !== null}
-                title="Remove Account"
-                message="Are you sure you want to remove this account from the contact?"
-                confirmText="Yes, Remove"
-                onConfirm={() => { if (confirmDeleteAccount !== null) deleteAccount(confirmDeleteAccount); }}
+                title="Remove Account from Contact"
+                message="This will remove the account from this contact."
+                confirmText="Remove Account"
+                variant="warning"
+                onConfirm={() => {
+                    if (confirmDeleteAccount !== null) {
+                        deleteAccount(confirmDeleteAccount);
+                    }
+                }}
                 onCancel={() => setConfirmDeleteAccount(null)}
             />
         </div >
