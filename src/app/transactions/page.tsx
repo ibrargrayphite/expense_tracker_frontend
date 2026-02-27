@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getErrorMessage } from '@/lib/error-handler';
+import Pagination from '@/components/Pagination';
 
 const TX_TYPES = [
     { value: 'EXPENSE', label: 'Expense' },
@@ -117,8 +118,8 @@ export default function TransactionsPage() {
     const router = useRouter();
     const { showToast } = useToast();
     const [data, setData] = useState<{
-        transactions: Transaction[];
-        internalTransactions: InternalTransaction[];
+        transactions: any[];
+        internalTransactions: any[];
         accounts: Account[];
         loans: Loan[];
         contacts: Contact[];
@@ -144,6 +145,11 @@ export default function TransactionsPage() {
     const [filterDateTo, setFilterDateTo] = useState('');
     const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
     const [showFilters, setShowFilters] = useState(false);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const PAGE_SIZE = 10;
 
     const [modalMode, setModalMode] = useState<'STANDARD' | 'LOAN' | 'TRANSFER'>('STANDARD');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -180,17 +186,25 @@ export default function TransactionsPage() {
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchData();
-    }, [user, loading, filterDateFrom, filterDateTo]);
+    }, [user, loading, currentPage, search, filterType, filterAccount, filterDateFrom, filterDateTo, sortBy]);
 
     const fetchData = async () => {
         try {
-            const params: any = {};
-            if (filterDateFrom) params.start_date = filterDateFrom;
-            if (filterDateTo) params.end_date = filterDateTo;
+            const params: any = {
+                page: currentPage,
+                search: search || undefined,
+                type: filterType || undefined,
+                account: filterAccount || undefined,
+                start_date: filterDateFrom || undefined,
+                end_date: filterDateTo || undefined,
+                ordering: sortBy === 'date_desc' ? '-date' :
+                    sortBy === 'date_asc' ? 'date' :
+                        sortBy === 'amount_desc' ? '-amount' :
+                            sortBy === 'amount_asc' ? 'amount' : '-date'
+            };
 
-            const [txRes, internalRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes] = await Promise.all([
-                api.get('transactions/', { params }),
-                api.get('internal-transactions/'),
+            const [historyRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes] = await Promise.all([
+                api.get('transactions/history/', { params }),
                 api.get('accounts/'),
                 api.get('loans/'),
                 api.get('contacts/'),
@@ -200,18 +214,20 @@ export default function TransactionsPage() {
             ]);
 
             setData({
-                transactions: txRes.data,
-                internalTransactions: internalRes.data.map((t: any) => ({ ...t, is_internal: true })),
-                accounts: accRes.data,
-                loans: loanRes.data,
-                contacts: contactRes.data,
-                expenseCategories: expCatRes.data,
-                incomeSources: incSrcRes.data,
-                contactAccounts: contactAccRes.data,
+                transactions: historyRes.data.results,
+                internalTransactions: [], // Merged in results
+                accounts: accRes.data.results || accRes.data,
+                loans: loanRes.data.results || loanRes.data,
+                contacts: contactRes.data.results || contactRes.data,
+                expenseCategories: expCatRes.data.results || expCatRes.data,
+                incomeSources: incSrcRes.data.results || incSrcRes.data,
+                contactAccounts: contactAccRes.data.results || contactAccRes.data,
             });
+            setTotalCount(historyRes.data.count);
 
             if (accRes.data.length > 0 && !form.account) {
-                setForm(prev => ({ ...prev, account: accRes.data[0].id.toString() }));
+                const firstAcc = accRes.data.results ? accRes.data.results[0] : accRes.data[0];
+                setForm(prev => ({ ...prev, account: firstAcc.id.toString() }));
             }
         } catch (err) {
             console.error(err);
@@ -219,33 +235,7 @@ export default function TransactionsPage() {
         }
     };
 
-    const combinedTransactions = useMemo(() => {
-        const combined = [...data.transactions, ...data.internalTransactions];
-        return combined.sort((a, b) => {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            if (sortBy === 'date_desc') return dateB - dateA;
-            if (sortBy === 'date_asc') return dateA - dateB;
-
-            const amtA = parseFloat((a as any).total_amount || (a as any).amount);
-            const amtB = parseFloat((b as any).total_amount || (b as any).amount);
-            if (sortBy === 'amount_desc') return amtB - amtA;
-            if (sortBy === 'amount_asc') return amtA - amtB;
-            return 0;
-        }).filter(t => {
-            const matchesSearch = !search || t.note?.toLowerCase().includes(search.toLowerCase());
-            const matchesType = !filterType || (t.is_internal ? filterType === 'TRANSFER' : (t as any).accounts?.some((acc: any) => acc.splits.some((s: any) => s.type === filterType)));
-
-            // For internal transactions, check if either from or to account matches
-            const matchesAccount = !filterAccount || (
-                t.is_internal
-                    ? ((t as InternalTransaction).from_account === parseInt(filterAccount) || (t as InternalTransaction).to_account === parseInt(filterAccount))
-                    : (t as Transaction).accounts.some((acc: any) => acc.account === parseInt(filterAccount))
-            );
-
-            return matchesSearch && matchesType && matchesAccount;
-        });
-    }, [data.transactions, data.internalTransactions, sortBy, search, filterType, filterAccount]);
+    const combinedTransactions = data.transactions;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -516,7 +506,7 @@ export default function TransactionsPage() {
                         </div>
 
                         <div className="flex items-center justify-between text-[10px] text-slate-400 mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
-                            <span>{combinedTransactions.length} transactions match your criteria</span>
+                            <span>{totalCount} transactions match your criteria</span>
                             {(search || filterType || filterAccount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
                                 <button
                                     onClick={() => {
@@ -526,6 +516,7 @@ export default function TransactionsPage() {
                                         setFilterDateFrom('');
                                         setFilterDateTo('');
                                         setSortBy('date_desc');
+                                        setCurrentPage(1);
                                     }}
                                     className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
                                 >
@@ -673,6 +664,12 @@ export default function TransactionsPage() {
                         )}
                     </div>
                 </div>
+                <Pagination
+                    currentPage={currentPage}
+                    totalCount={totalCount}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setCurrentPage}
+                />
             </main >
 
             {/* Transaction Modal */}

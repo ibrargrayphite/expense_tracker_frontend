@@ -9,6 +9,7 @@ import { Plus, Trash2, Edit3, X, Search, ArrowUpDown, History as HistoryIcon } f
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getErrorMessage } from '@/lib/error-handler';
+import Pagination from '@/components/Pagination';
 
 const BANK_OPTIONS = [
     'Cash',
@@ -63,6 +64,11 @@ export default function AccountsPage() {
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
     const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const PAGE_SIZE = 5;
+
     const toggleExpand = (id: number) => {
         setExpandedAccounts(prev => ({ ...prev, [id]: !prev[id] }));
     };
@@ -99,12 +105,17 @@ export default function AccountsPage() {
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchAccounts();
-    }, [user, loading]);
+    }, [user, loading, currentPage]);
 
     const fetchAccounts = async () => {
         try {
-            const res = await api.get('accounts/');
-            setAccounts(res.data);
+            const params: any = {
+                page: currentPage,
+                search: search || undefined
+            };
+            const res = await api.get('accounts/', { params });
+            setAccounts(res.data.results);
+            setTotalCount(res.data.count);
         } catch (err) {
             console.error(err);
         }
@@ -268,12 +279,12 @@ export default function AccountsPage() {
 
                         <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-4">
-                                <span>{filteredAccounts.length} accounts found</span>
-                                <span className="font-bold text-primary">Total: Rs. {totalBalance.toLocaleString()}</span>
+                                <span>{totalCount} accounts found</span>
+                                <span className="font-bold text-primary italic">Page {currentPage} - Total on Page: Rs. {totalBalance.toLocaleString()}</span>
                             </div>
                             {(search || filterBank || filterMinBalance || filterMaxBalance || sortBy !== 'balance_desc') && (
                                 <button
-                                    onClick={() => { setSearch(''); setFilterBank(''); setFilterMinBalance(''); setFilterMaxBalance(''); setSortBy('balance_desc'); }}
+                                    onClick={() => { setSearch(''); setFilterBank(''); setFilterMinBalance(''); setFilterMaxBalance(''); setSortBy('balance_desc'); setCurrentPage(1); }}
                                     className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
                                 >
                                     Clear all filters
@@ -284,7 +295,7 @@ export default function AccountsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                    {filteredAccounts.map((acc: Account) => (
+                    {accounts.map((acc: Account) => (
                         <div key={acc.id} className="card overflow-hidden p-0 flex flex-col border border-slate-200 dark:border-slate-800 transition-all hover:shadow-lg">
                             <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -329,6 +340,13 @@ export default function AccountsPage() {
                         </div>
                     )}
                 </div>
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalCount={totalCount}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setCurrentPage}
+                />
             </main>
 
             {/* Modal */}

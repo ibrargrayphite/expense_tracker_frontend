@@ -9,6 +9,7 @@ import { Plus, Trash2, Edit2, X, Check, Search } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getErrorMessage } from '@/lib/error-handler';
+import Pagination from '@/components/Pagination';
 
 interface Category {
     id: number;
@@ -30,19 +31,30 @@ export default function CategoriesPage() {
     const [form, setForm] = useState({ name: '', description: '' });
     const [deleteConfig, setDeleteConfig] = useState<{ id: number; type: 'EXPENSE' | 'INCOME' } | null>(null);
 
+    // Pagination state
+    const [expPage, setExpPage] = useState(1);
+    const [incPage, setIncPage] = useState(1);
+    const [totalExpCount, setTotalExpCount] = useState(0);
+    const [totalIncCount, setTotalIncCount] = useState(0);
+    const PAGE_SIZE = 5;
+
     useEffect(() => {
         if (!loading && !user) router.push('/login');
-        if (user) fetchCategories();
-    }, [user, loading]);
+        if (user) {
+            fetchCategories();
+        }
+    }, [user, loading, expPage, incPage]);
 
     const fetchCategories = async () => {
         try {
             const [expRes, incRes] = await Promise.all([
-                api.get('expense-categories/'),
-                api.get('income-sources/'),
+                api.get('expense-categories/', { params: { page: expPage } }),
+                api.get('income-sources/', { params: { page: incPage } }),
             ]);
-            setExpenseCategories(expRes.data);
-            setIncomeSources(incRes.data);
+            setExpenseCategories(expRes.data.results);
+            setTotalExpCount(expRes.data.count);
+            setIncomeSources(incRes.data.results);
+            setTotalIncCount(incRes.data.count);
         } catch (err) {
             console.error(err);
             showToast(getErrorMessage(err), 'error');
@@ -149,6 +161,12 @@ export default function CategoriesPage() {
                                 </div>
                             )}
                         </div>
+                        <Pagination
+                            currentPage={expPage}
+                            totalCount={totalExpCount}
+                            pageSize={PAGE_SIZE}
+                            onPageChange={setExpPage}
+                        />
                     </section>
 
                     {/* Income Sources */}
@@ -188,6 +206,12 @@ export default function CategoriesPage() {
                                 </div>
                             )}
                         </div>
+                        <Pagination
+                            currentPage={incPage}
+                            totalCount={totalIncCount}
+                            pageSize={PAGE_SIZE}
+                            onPageChange={setIncPage}
+                        />
                     </section>
                 </div>
             </main>

@@ -9,6 +9,7 @@ import { Plus, X, ArrowUpRight, ArrowDownRight, CheckCircle2, Edit3, Trash2, Sea
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getErrorMessage } from '@/lib/error-handler';
+import Pagination from '@/components/Pagination';
 
 export default function LoansPage() {
     const { user, loading } = useAuth();
@@ -22,6 +23,11 @@ export default function LoansPage() {
     const [form, setForm] = useState({ contact: '', type: 'TAKEN', total_amount: '', description: '', is_closed: false });
     const [contactForm, setContactForm] = useState({ first_name: '', last_name: '', phone1: '' });
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const PAGE_SIZE = 5;
 
     // Filter & sort
     const [search, setSearch] = useState('');
@@ -38,12 +44,25 @@ export default function LoansPage() {
             fetchLoans();
             fetchContacts();
         }
-    }, [user, loading]);
+    }, [user, loading, currentPage, search, filterType, filterStatus, filterMinAmount, filterMaxAmount, sortBy]);
 
     const fetchLoans = async () => {
         try {
-            const res = await api.get('loans/');
-            setLoans(res.data);
+            const params: any = {
+                page: currentPage,
+                search: search || undefined,
+                type: filterType !== 'ALL' ? filterType : undefined,
+                status: filterStatus !== 'ALL' ? filterStatus : undefined,
+                min_amount: filterMinAmount || undefined,
+                max_amount: filterMaxAmount || undefined,
+                ordering: sortBy === 'amount_desc' ? '-amount' :
+                    sortBy === 'amount_asc' ? 'amount' :
+                        sortBy === 'name_asc' ? 'name' :
+                            sortBy === 'name_desc' ? '-name' : '-created_at'
+            };
+            const res = await api.get('loans/', { params });
+            setLoans(res.data.results);
+            setTotalCount(res.data.count);
         } catch (err) {
             console.error(err);
         }
@@ -133,25 +152,6 @@ export default function LoansPage() {
         return loan.contact_name || 'Unknown Contact';
     };
 
-    const filteredLoans = loans
-        .filter((l: any) => {
-            const matchesType = filterType === 'ALL' || l.type === filterType;
-            const matchesStatus = filterStatus === 'ALL' ||
-                (filterStatus === 'ACTIVE' && !l.is_closed) ||
-                (filterStatus === 'CLOSED' && l.is_closed);
-            const matchesSearch = !search || getDisplayName(l).toLowerCase().includes(search.toLowerCase());
-            const amount = parseFloat(l.remaining_amount);
-            const matchesMinAmount = !filterMinAmount || amount >= parseFloat(filterMinAmount);
-            const matchesMaxAmount = !filterMaxAmount || amount <= parseFloat(filterMaxAmount);
-            return matchesType && matchesStatus && matchesSearch && matchesMinAmount && matchesMaxAmount;
-        })
-        .sort((a: any, b: any) => {
-            if (sortBy === 'amount_desc') return parseFloat(b.remaining_amount) - parseFloat(a.remaining_amount);
-            if (sortBy === 'amount_asc') return parseFloat(a.remaining_amount) - parseFloat(b.remaining_amount);
-            if (sortBy === 'name_asc') return getDisplayName(a).localeCompare(getDisplayName(b));
-            if (sortBy === 'name_desc') return getDisplayName(b).localeCompare(getDisplayName(a));
-            return 0;
-        });
 
     return (
         <div className="min-h-screen">
@@ -261,16 +261,11 @@ export default function LoansPage() {
 
                         <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
                             <span>
-                                {filterStatus === 'ALL' ?
-                                    `${filteredLoans.filter((l: any) => !l.is_closed).length} active / ${filteredLoans.filter((l: any) => l.is_closed).length} closed` :
-                                    filterStatus === 'ACTIVE' ?
-                                        `${filteredLoans.filter((l: any) => !l.is_closed).length} active loans` :
-                                        `${filteredLoans.filter((l: any) => l.is_closed).length} closed loans`
-                                }
+                                Found {totalCount} matching records
                             </span>
                             {(search || filterType !== 'ALL' || filterStatus !== 'ALL' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
                                 <button
-                                    onClick={() => { setSearch(''); setFilterType('ALL'); setFilterStatus('ALL'); setFilterMinAmount(''); setFilterMaxAmount(''); setSortBy('amount_desc'); }}
+                                    onClick={() => { setSearch(''); setFilterType('ALL'); setFilterStatus('ALL'); setFilterMinAmount(''); setFilterMaxAmount(''); setSortBy('amount_desc'); setCurrentPage(1); }}
                                     className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
                                 >
                                     Reset Filters
@@ -288,7 +283,7 @@ export default function LoansPage() {
                             Loans Taken
                         </h2>
                         <div className="space-y-4">
-                            {filteredLoans.filter((l: any) => l.type === 'TAKEN' && !l.is_closed).map((loan: any) => (
+                            {loans.filter((l: any) => l.type === 'TAKEN' && !l.is_closed).map((loan: any) => (
                                 <div key={loan.id} className="card border-l-4 border-red-500">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
@@ -320,7 +315,7 @@ export default function LoansPage() {
                             Money Lent
                         </h2>
                         <div className="space-y-4">
-                            {filteredLoans.filter((l: any) => l.type === 'LENT' && !l.is_closed).map((loan: any) => (
+                            {loans.filter((l: any) => l.type === 'LENT' && !l.is_closed).map((loan: any) => (
                                 <div key={loan.id} className="card border-l-4 border-green-500">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
@@ -366,6 +361,13 @@ export default function LoansPage() {
                         ))}
                     </div>
                 </section>
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalCount={totalCount}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setCurrentPage}
+                />
             </main>
 
             {/* Modal */}

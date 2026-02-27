@@ -9,6 +9,7 @@ import { Plus, Trash2, Edit3, Mail, X, Phone, User as UserIcon, CreditCard, Sear
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getErrorMessage } from '@/lib/error-handler';
+import Pagination from '@/components/Pagination';
 
 const BANK_OPTIONS = [
     'JazzCash',
@@ -78,6 +79,11 @@ export default function ContactsPage() {
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
     const [expandedContacts, setExpandedContacts] = useState<Record<number, boolean>>({});
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const PAGE_SIZE = 5;
+
     const toggleExpand = (id: number) => {
         setExpandedContacts(prev => ({ ...prev, [id]: !prev[id] }));
     };
@@ -91,12 +97,23 @@ export default function ContactsPage() {
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchContacts();
-    }, [user, loading]);
+    }, [user, loading, currentPage, search, sortBy, filterAccountCount]);
 
     const fetchContacts = async () => {
         try {
-            const res = await api.get('contacts/');
-            setContacts(res.data);
+            const params: any = {
+                page: currentPage,
+                search: search || undefined,
+                accounts: filterAccountCount !== 'ALL' ? filterAccountCount : undefined,
+                ordering: sortBy === 'name_asc' ? 'first_name' :
+                    sortBy === 'name_desc' ? '-first_name' :
+                        sortBy === 'accounts_asc' ? 'accounts_count' :
+                            sortBy === 'accounts_desc' ? '-accounts_count' : 'first_name'
+            };
+            const res = await api.get('contacts/', { params });
+            // DRF returns { results: [], count: n } when paginated
+            setContacts(res.data.results);
+            setTotalCount(res.data.count);
         } catch (err) {
             console.error(err);
         }
@@ -207,28 +224,6 @@ export default function ContactsPage() {
         }
     };
 
-    const filteredContacts = contacts
-        .filter(c => {
-            const name = `${c.first_name} ${c.last_name}`.toLowerCase();
-            const matchesSearch = !search ||
-                name.includes(search.toLowerCase()) ||
-                c.phone1.includes(search) ||
-                (c.phone2 && c.phone2.includes(search)) ||
-                (c.email && c.email.toLowerCase().includes(search.toLowerCase()));
-            const matchesAccountCount = filterAccountCount === 'ALL' ||
-                (filterAccountCount === 'HAS_ACCOUNTS' && c.accounts.length > 0) ||
-                (filterAccountCount === 'NO_ACCOUNTS' && c.accounts.length === 0);
-            return matchesSearch && matchesAccountCount;
-        })
-        .sort((a, b) => {
-            const nameA = `${a.first_name} ${a.last_name}`;
-            const nameB = `${b.first_name} ${b.last_name}`;
-            if (sortBy === 'name_asc') return nameA.localeCompare(nameB);
-            if (sortBy === 'name_desc') return nameB.localeCompare(nameA);
-            if (sortBy === 'accounts_asc') return a.accounts.length - b.accounts.length;
-            if (sortBy === 'accounts_desc') return b.accounts.length - a.accounts.length;
-            return 0;
-        });
     return (
         <div className="min-h-screen">
             <Navbar />
@@ -310,10 +305,10 @@ export default function ContactsPage() {
                         </div>
 
                         <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
-                            <span>Found {filteredContacts.length} contacts matching criteria</span>
+                            <span>Found {totalCount} contacts matching criteria</span>
                             {(search || filterAccountCount !== 'ALL' || sortBy !== 'name_asc') && (
                                 <button
-                                    onClick={() => { setSearch(''); setFilterAccountCount('ALL'); setSortBy('name_asc'); }}
+                                    onClick={() => { setSearch(''); setFilterAccountCount('ALL'); setSortBy('name_asc'); setCurrentPage(1); }}
                                     className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
                                 >
                                     Reset Filters
@@ -324,7 +319,7 @@ export default function ContactsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
-                    {filteredContacts.map((contact: Contact) => (
+                    {contacts.map((contact: Contact) => (
                         <div key={contact.id} className="card p-6 flex flex-col gap-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
@@ -510,6 +505,13 @@ export default function ContactsPage() {
                         </div>
                     )}
                 </div>
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalCount={totalCount}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setCurrentPage}
+                />
             </main>
 
             {/* Contact Modal */}
