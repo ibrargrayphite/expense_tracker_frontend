@@ -37,6 +37,7 @@ interface Loan {
     remaining_amount: string;
     total_amount: string;
     is_closed: boolean;
+    description: string;
 }
 
 interface ContactAccount {
@@ -780,8 +781,15 @@ export default function TransactionsPage() {
                                                         <select className="input-field py-3" value={form.loan} onChange={e => setForm({ ...form, loan: e.target.value })} required disabled={!form.contact}>
                                                             <option value="">-- Select Record --</option>
                                                             {data.loans.filter(l => l.contact?.toString() === form.contact && (form.type === 'LOAN_REPAYMENT' ? l.type === 'TAKEN' : l.type === 'LENT') && !l.is_closed).map(l => (
-                                                                <option key={l.id} value={l.id}>Rs. {parseFloat(l.remaining_amount).toLocaleString()} remaining</option>
-                                                            ))}
+                                                                <option key={l.id} value={l.id}>
+                                                                    Total: {parseFloat(l.total_amount).toLocaleString()} |
+                                                                    Remaining: {parseFloat(l.remaining_amount).toLocaleString()} |{" "}
+                                                                    {l.description
+                                                                        ? l.description.length > 50
+                                                                            ? l.description.slice(0, 50) + "..."
+                                                                            : l.description
+                                                                        : "No Description"}
+                                                                </option>))}
                                                         </select>
                                                     </div>
                                                 )}
