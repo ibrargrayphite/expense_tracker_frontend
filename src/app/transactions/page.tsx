@@ -569,7 +569,7 @@ export default function TransactionsPage() {
                                                 <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${t.is_internal ? 'bg-blue-500/10 text-blue-500' :
                                                     isIncome ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
                                                     }`}>
-                                                    {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split' : (t as Transaction).accounts[0]?.splits[0]?.type.replace('_', ' ')}
+                                                    {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split' : (t as Transaction).accounts[0]?.splits[0]?.type?.replace('_', ' ') || '-'}
                                                 </span>
                                             </td>
                                             <td className="p-4">
