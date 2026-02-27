@@ -175,6 +175,7 @@ export default function TransactionsPage() {
     const [image, setImage] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<{ id: number; isInternal: boolean } | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -345,6 +346,33 @@ export default function TransactionsPage() {
         }
     };
 
+    const handleDownloadExcel = async () => {
+        setIsDownloading(true);
+        try {
+            const params: any = {};
+            if (filterDateFrom) params.start_date = filterDateFrom;
+            if (filterDateTo) params.end_date = filterDateTo;
+
+            const response = await api.get('transactions/export_excel/', {
+                params,
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `transactions_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to download Excel', 'error');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!confirmDelete) return;
         try {
@@ -409,6 +437,13 @@ export default function TransactionsPage() {
                             className="btn btn-secondary border-slate-200 flex items-center gap-2"
                         >
                             <ArrowRightLeft size={20} /> Internal Transfer
+                        </button>
+                        <button
+                            onClick={handleDownloadExcel}
+                            disabled={isDownloading}
+                            className="btn btn-secondary border-green-200 text-green-600 flex items-center gap-2 hover:bg-green-50"
+                        >
+                            <Download size={20} /> {isDownloading ? 'Downloading...' : 'Download Excel'}
                         </button>
                     </div>
                 </div>
