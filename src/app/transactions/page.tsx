@@ -522,26 +522,50 @@ export default function TransactionsPage() {
                                     const isIncome = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type)));
                                     const isExpense = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['EXPENSE', 'MONEY_LENT', 'LOAN_REPAYMENT'].includes(s.type)));
 
-                                    let fromDisplay = '-';
-                                    let toDisplay = '-';
+                                    let fromDisplay: React.ReactNode = <span className="text-slate-300">-</span>;
+                                    let toDisplay: React.ReactNode = <span className="text-slate-300">-</span>;
 
                                     if (t.is_internal) {
                                         const it = t as InternalTransaction;
-                                        fromDisplay = `${it.from_account_name} - ${it.from_account_number}`;
-                                        toDisplay = `${it.to_account_name} - ${it.to_account_number}`;
+                                        fromDisplay = (
+                                            <div className="flex flex-col leading-tight">
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white">{it.from_account_name}</span>
+                                                <span className="text-[10px] text-slate-400">{it.from_bank_name} - {it.from_account_number}</span>
+                                            </div>
+                                        );
+                                        toDisplay = (
+                                            <div className="flex flex-col leading-tight">
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white">{it.to_account_name}</span>
+                                                <span className="text-[10px] text-slate-400">{it.to_bank_name} - {it.to_account_number}</span>
+                                            </div>
+                                        );
                                     } else {
                                         const xt = t as Transaction;
-                                        const userAccounts = xt.accounts.map(acc => `${acc.account_name} - ${acc.account_number}`).join(', ');
-                                        const contactAccount = xt.contact_account_name ? `${xt.contact_account_name} - ${xt.contact_account_number}` : (xt.contact_name || 'Deleted Contact Account');
-                                        console.log(xt.contact_account_number);
-
+                                        const userAccounts = (
+                                            <div className="flex flex-col gap-1.5">
+                                                {xt.accounts.map(acc => (
+                                                    <div key={acc.id} className="flex flex-col leading-tight">
+                                                        <span className="text-xs font-bold text-slate-900 dark:text-white">{acc.account_name}</span>
+                                                        <span className="text-[10px] text-slate-400">{acc.bank_name} - {acc.account_number}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                        const contactAccount = (
+                                            <div className="flex flex-col leading-tight">
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white">{xt.contact_account_name || xt.contact_name || 'N/A'}</span>
+                                                {xt.contact_account_number && (
+                                                    <span className="text-[10px] text-slate-400">{xt.contact_bank_name} - {xt.contact_account_number}</span>
+                                                )}
+                                            </div>
+                                        );
 
                                         const type = xt.accounts[0]?.splits[0]?.type;
                                         if (['EXPENSE'].includes(type)) {
                                             fromDisplay = userAccounts;
-                                            toDisplay = '-';
+                                            toDisplay = <span className="text-slate-300">-</span>;
                                         } else if (['INCOME'].includes(type)) {
-                                            fromDisplay = '-';
+                                            fromDisplay = <span className="text-slate-300">-</span>;
                                             toDisplay = userAccounts;
                                         } else if (['LOAN_TAKEN', 'REIMBURSEMENT'].includes(type)) {
                                             fromDisplay = contactAccount;
@@ -561,10 +585,10 @@ export default function TransactionsPage() {
                                                 </div>
                                             </td>
                                             <td className="p-4 min-w-[150px]">
-                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{fromDisplay}</span>
+                                                {fromDisplay}
                                             </td>
                                             <td className="p-4 min-w-[150px]">
-                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{toDisplay}</span>
+                                                {toDisplay}
                                             </td>
                                             <td className="p-4">
                                                 <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${t.is_internal ? 'bg-blue-500/10 text-blue-500' :
