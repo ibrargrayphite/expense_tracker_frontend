@@ -20,6 +20,8 @@ import {
   Filter,
   ArrowUpDown
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
+import { getErrorMessage } from '@/lib/error-handler';
 import { format, subDays, startOfDay, parseISO } from 'date-fns';
 import {
   AreaChart,
@@ -65,6 +67,7 @@ const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const [data, setData] = useState<{
     accounts: Account[];
     loans: Loan[];
@@ -109,6 +112,7 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error('Error fetching data:', error);
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setFetching(false);
     }

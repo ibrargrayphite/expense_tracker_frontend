@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import api from '@/lib/api';
 import Link from 'next/link';
 import { ArrowLeft, Mail, Loader2, CheckCircle2 } from 'lucide-react';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -19,7 +20,7 @@ export default function ForgotPasswordPage() {
             await api.post('users/forgot_password/', { email });
             setSuccess(true);
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }

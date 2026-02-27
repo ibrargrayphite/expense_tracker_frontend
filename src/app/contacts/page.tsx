@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { Plus, Trash2, Edit3, Mail, X, Phone, User as UserIcon, CreditCard, Search, Filter, HandCoins, History as HistoryIcon, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getErrorMessage } from '@/lib/error-handler';
 
 const BANK_OPTIONS = [
     'JazzCash',
@@ -150,7 +151,7 @@ export default function ContactsPage() {
             setForm({ first_name: '', last_name: '', phone1: '', phone2: '', email: '' });
             fetchContacts();
         } catch (err) {
-            showToast('Something went wrong. Please try again.', 'error');
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         }
     };
@@ -165,14 +166,17 @@ export default function ContactsPage() {
             };
             if (editingAccount) {
                 await api.put(`contact-accounts/${editingAccount.id}/`, data);
+                showToast('Account updated!', 'success');
             } else {
                 await api.post('contact-accounts/', data);
+                showToast('Account added to contact!', 'success');
             }
             setIsAccountModalOpen(false);
             setEditingAccount(null);
             setAccountForm({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '' });
             fetchContacts();
         } catch (err) {
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         }
     };
@@ -183,7 +187,7 @@ export default function ContactsPage() {
             showToast('Contact deleted.', 'info');
             fetchContacts();
         } catch (err) {
-            showToast('Failed to delete contact.', 'error');
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         } finally {
             setConfirmDeleteContact(null);
@@ -196,7 +200,7 @@ export default function ContactsPage() {
             showToast('Account removed from contact.', 'info');
             fetchContacts();
         } catch (err) {
-            showToast('Failed to delete account.', 'error');
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         } finally {
             setConfirmDeleteAccount(null);

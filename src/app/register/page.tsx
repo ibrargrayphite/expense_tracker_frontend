@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('');
@@ -19,7 +20,7 @@ export default function RegisterPage() {
             await api.post('users/', { username, email, password });
             router.push('/login');
         } catch (err: any) {
-            setError(Object.values(err.response?.data || {}).flat().join(' ') || 'Something went wrong');
+            setError(getErrorMessage(err));
         }
     };
 

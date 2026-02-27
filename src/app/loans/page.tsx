@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { Plus, X, ArrowUpRight, ArrowDownRight, CheckCircle2, Edit3, Trash2, Search, Filter } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export default function LoansPage() {
     const { user, loading } = useAuth();
@@ -54,6 +55,7 @@ export default function LoansPage() {
             setContacts(res.data);
         } catch (err) {
             console.error(err);
+            showToast(getErrorMessage(err), 'error');
         }
     };
 
@@ -94,7 +96,7 @@ export default function LoansPage() {
             setForm({ contact: '', type: 'TAKEN', total_amount: '', description: '', is_closed: false });
             fetchLoans();
         } catch (err) {
-            showToast('Something went wrong. Please try again.', 'error');
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         }
     };
@@ -103,11 +105,13 @@ export default function LoansPage() {
         e.preventDefault();
         try {
             const res = await api.post('contacts/', contactForm);
+            showToast('Contact created and selected!', 'success');
             setIsContactModalOpen(false);
             setContactForm({ first_name: '', last_name: '', phone1: '' });
             setForm({ ...form, contact: res.data.id });
             fetchContacts();
         } catch (err) {
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         }
     };
@@ -118,7 +122,7 @@ export default function LoansPage() {
             showToast('Loan record deleted.', 'info');
             fetchLoans();
         } catch (err) {
-            showToast('Failed to delete loan record.', 'error');
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         } finally {
             setConfirmDelete(null);

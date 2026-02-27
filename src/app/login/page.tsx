@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
 import { Eye, EyeOff, ArrowRight, User, Lock, Mail, Loader2 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
+import { getErrorMessage } from '@/lib/error-handler';
 
 type Mode = 'login' | 'register';
 
@@ -23,6 +25,7 @@ export default function AuthPage() {
     const [suggestion, setSuggestion] = useState('');
     const [loading, setLoading] = useState(false);
     const { user, loading: authLoading, login } = useAuth();
+    const { showToast } = useToast();
     const router = useRouter();
 
     // Redirect if already logged in
@@ -59,6 +62,7 @@ export default function AuthPage() {
             if (mode === 'login') {
                 const response = await api.post('token/', { username, password });
                 login(response.data.access, response.data.refresh);
+                showToast('Welcome back!', 'success');
             } else {
                 await api.post('register/', {
                     username,
@@ -69,20 +73,14 @@ export default function AuthPage() {
                 });
                 const response = await api.post('token/', { username, password });
                 login(response.data.access, response.data.refresh);
+                showToast('Account created! Welcome aboard.', 'success');
             }
         } catch (err: any) {
             const data = err.response?.data;
-            if (data && typeof data === 'object') {
-                if (data.suggestion) {
-                    setSuggestion(data.suggestion);
-                }
-                const first = Object.values(data)[0];
-                setError(Array.isArray(first) ? first[0] as string : String(first));
-            } else if (err.message) {
-                setError(err.message);
-            } else {
-                setError('Something went wrong. Please check your connection.');
+            if (data && typeof data === 'object' && data.suggestion) {
+                setSuggestion(data.suggestion);
             }
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }

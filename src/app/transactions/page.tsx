@@ -9,6 +9,7 @@ import { Plus, X, Search, Filter, Image as ImageIcon, Trash2, Download, ArrowRig
 import { format } from 'date-fns';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getErrorMessage } from '@/lib/error-handler';
 
 const TX_TYPES = [
     { value: 'EXPENSE', label: 'Expense' },
@@ -212,7 +213,7 @@ export default function TransactionsPage() {
             }
         } catch (err) {
             console.error(err);
-            showToast('Failed to load data', 'error');
+            showToast(getErrorMessage(err), 'error');
         }
     };
 
@@ -339,7 +340,7 @@ export default function TransactionsPage() {
             setImage(null);
         } catch (err: any) {
             console.error(err);
-            showToast(err.response?.data?.detail || 'Operation failed', 'error');
+            showToast(getErrorMessage(err), 'error');
         }
     };
 
@@ -351,7 +352,7 @@ export default function TransactionsPage() {
             showToast('Deleted and balances reversed', 'success');
             fetchData();
         } catch (err) {
-            showToast('Failed to delete', 'error');
+            showToast(getErrorMessage(err), 'error');
         } finally {
             setConfirmDelete(null);
         }

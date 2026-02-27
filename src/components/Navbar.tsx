@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { LayoutDashboard, Wallet, HandCoins, BookUser, History, LogOut, Menu, X, Tags } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 const NAV_LINKS = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -16,8 +17,14 @@ const NAV_LINKS = [
 
 export default function Navbar() {
     const { logout } = useAuth();
+    const { showToast } = useToast();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+
+    const handleLogout = () => {
+        logout();
+        showToast('Logged out successfully', 'info');
+    };
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 12);
@@ -286,7 +293,7 @@ export default function Navbar() {
                         ))}
                     </ul>
                     <div className="nav-divider" />
-                    <button className="logout-btn" onClick={logout}>
+                    <button className="logout-btn" onClick={handleLogout}>
                         <LogOut size={16} />
                         Logout
                     </button>
@@ -322,7 +329,7 @@ export default function Navbar() {
                     <div className="mobile-separator" />
                     <button
                         className="mobile-logout"
-                        onClick={() => { logout(); setMobileMenuOpen(false); }}
+                        onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
                     >
                         <LogOut size={20} />
                         Logout

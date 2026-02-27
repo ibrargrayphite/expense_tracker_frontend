@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { Plus, Trash2, Edit2, X, Check, Search } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getErrorMessage } from '@/lib/error-handler';
 
 interface Category {
     id: number;
@@ -44,7 +45,7 @@ export default function CategoriesPage() {
             setIncomeSources(incRes.data);
         } catch (err) {
             console.error(err);
-            showToast('Failed to fetch categories', 'error');
+            showToast(getErrorMessage(err), 'error');
         } finally {
             setFetching(false);
         }
@@ -78,7 +79,7 @@ export default function CategoriesPage() {
             fetchCategories();
         } catch (err) {
             console.error(err);
-            showToast('Operation failed', 'error');
+            showToast(getErrorMessage(err), 'error');
         }
     };
 
@@ -91,7 +92,7 @@ export default function CategoriesPage() {
             fetchCategories();
         } catch (err) {
             console.error(err);
-            showToast('Failed to delete category', 'error');
+            showToast(getErrorMessage(err), 'error');
         } finally {
             setDeleteConfig(null);
         }

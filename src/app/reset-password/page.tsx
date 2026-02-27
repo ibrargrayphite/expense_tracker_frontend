@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { getErrorMessage } from '@/lib/error-handler';
 
 function ResetPasswordForm() {
     const searchParams = useSearchParams();
@@ -47,7 +48,7 @@ function ResetPasswordForm() {
             setSuccess(true);
             setTimeout(() => router.push('/login'), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Failed to reset password. Link may be expired.');
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }

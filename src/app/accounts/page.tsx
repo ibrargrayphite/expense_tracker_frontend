@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { Plus, Trash2, Edit3, X, Search, ArrowUpDown, History as HistoryIcon } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getErrorMessage } from '@/lib/error-handler';
 
 const BANK_OPTIONS = [
     'Cash',
@@ -148,7 +149,7 @@ export default function AccountsPage() {
             setForm({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '', balance: '' });
             fetchAccounts();
         } catch (err) {
-            showToast('Something went wrong. Please try again.', 'error');
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         }
     };
@@ -159,7 +160,7 @@ export default function AccountsPage() {
             showToast('Account deleted.', 'info');
             fetchAccounts();
         } catch (err) {
-            showToast('Failed to delete account.', 'error');
+            showToast(getErrorMessage(err), 'error');
             console.error(err);
         } finally {
             setConfirmDelete(null);
