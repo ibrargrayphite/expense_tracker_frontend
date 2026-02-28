@@ -31,6 +31,8 @@ export default function CategoriesPage() {
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [form, setForm] = useState({ name: '', description: '' });
     const [deleteConfig, setDeleteConfig] = useState<{ id: number; type: 'EXPENSE' | 'INCOME' } | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Pagination state
     const [expPage, setExpPage] = useState(1);
@@ -79,7 +81,7 @@ export default function CategoriesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const endpoint = modalType === 'EXPENSE' ? 'expense-categories/' : 'income-sources/';
-
+        setIsSubmitting(true);
         try {
             if (editingCategory) {
                 await api.put(`${endpoint}${editingCategory.id}/`, form);
@@ -93,12 +95,15 @@ export default function CategoriesPage() {
         } catch (err) {
             console.error(err);
             showToast(getErrorMessage(err), 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleDelete = async () => {
         if (!deleteConfig) return;
         const endpoint = deleteConfig.type === 'EXPENSE' ? 'expense-categories/' : 'income-sources/';
+        setIsDeleting(true);
         try {
             await api.delete(`${endpoint}${deleteConfig.id}/`);
             showToast('Category deleted', 'success');
@@ -107,6 +112,7 @@ export default function CategoriesPage() {
             console.error(err);
             showToast(getErrorMessage(err), 'error');
         } finally {
+            setIsDeleting(false);
             setDeleteConfig(null);
         }
     };
@@ -271,10 +277,15 @@ export default function CategoriesPage() {
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary flex-1">Cancel</button>
                                 <button
                                     type="submit"
-                                    className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={!form.name}
+                                    className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    disabled={!form.name || isSubmitting}
                                 >
-                                    Save Category
+                                    {isSubmitting ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Saving…
+                                        </>
+                                    ) : 'Save Category'}
                                 </button>
                             </div>
                         </form>
@@ -287,8 +298,9 @@ export default function CategoriesPage() {
                     isOpen={!!deleteConfig}
                     title="Delete Category?"
                     message="This action cannot be undone. Are you sure?"
+                    isLoading={isDeleting}
                     onConfirm={handleDelete}
-                    onCancel={() => setDeleteConfig(null)}
+                    onCancel={() => !isDeleting && setDeleteConfig(null)}
                 />
             )}
         </div>

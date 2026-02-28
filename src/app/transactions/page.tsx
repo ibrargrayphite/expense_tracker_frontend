@@ -190,6 +190,8 @@ export default function TransactionsPage() {
     const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
     const [downloadStartDate, setDownloadStartDate] = useState('');
     const [downloadEndDate, setDownloadEndDate] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -254,7 +256,7 @@ export default function TransactionsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
+        setIsSubmitting(true);
         try {
             if (modalMode === 'TRANSFER' || form.type === 'TRANSFER') {
                 await api.post('internal-transactions/', {
@@ -345,6 +347,8 @@ export default function TransactionsPage() {
         } catch (err: any) {
             console.error(err);
             showToast(getErrorMessage(err), 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -378,6 +382,7 @@ export default function TransactionsPage() {
 
     const handleDelete = async () => {
         if (!confirmDelete) return;
+        setIsDeleting(true);
         try {
             const endpoint = confirmDelete.isInternal ? 'internal-transactions' : 'transactions';
             await api.delete(`${endpoint}/${confirmDelete.id}/`);
@@ -386,6 +391,7 @@ export default function TransactionsPage() {
         } catch (err) {
             showToast(getErrorMessage(err), 'error');
         } finally {
+            setIsDeleting(false);
             setConfirmDelete(null);
         }
     };
@@ -1015,10 +1021,15 @@ export default function TransactionsPage() {
                                     return (
                                         <button
                                             type="submit"
-                                            className="btn btn-primary w-full py-4 text-lg shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            disabled={!isFormValid}
+                                            className="btn btn-primary w-full py-4 text-lg shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                                            disabled={!isFormValid || isSubmitting}
                                         >
-                                            Complete Record
+                                            {isSubmitting ? (
+                                                <>
+                                                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    Saving…
+                                                </>
+                                            ) : 'Complete Record'}
                                         </button>
                                     );
                                 })()}
@@ -1220,7 +1231,8 @@ export default function TransactionsPage() {
                     title="Reverse Transaction?"
                     message="This will delete the record and automatically reverse all balance and loan updates. Proceed?"
                     onConfirm={handleDelete}
-                    onCancel={() => setConfirmDelete(null)}
+                    onCancel={() => !isDeleting && setConfirmDelete(null)}
+                    isLoading={isDeleting}
                 />
             )}
 

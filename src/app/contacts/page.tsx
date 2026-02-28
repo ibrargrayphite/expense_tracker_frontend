@@ -79,6 +79,10 @@ export default function ContactsPage() {
     const [confirmDeleteContact, setConfirmDeleteContact] = useState<number | null>(null);
     const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<number | null>(null);
     const [expandedContacts, setExpandedContacts] = useState<Record<number, boolean>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmittingAccount, setIsSubmittingAccount] = useState(false);
+    const [isDeletingContact, setIsDeletingContact] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -159,6 +163,7 @@ export default function ContactsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             if (editingContact) {
                 await api.put(`contacts/${editingContact.id}/`, form);
@@ -174,12 +179,15 @@ export default function ContactsPage() {
         } catch (err) {
             showToast(getErrorMessage(err), 'error');
             console.error(err);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleAddAccount = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedContact) return;
+        setIsSubmittingAccount(true);
         try {
             const data = {
                 ...accountForm,
@@ -199,10 +207,13 @@ export default function ContactsPage() {
         } catch (err) {
             showToast(getErrorMessage(err), 'error');
             console.error(err);
+        } finally {
+            setIsSubmittingAccount(false);
         }
     };
 
     const deleteContact = async (id: number) => {
+        setIsDeletingContact(true);
         try {
             await api.delete(`contacts/${id}/`);
             showToast('Contact deleted.', 'info');
@@ -211,11 +222,13 @@ export default function ContactsPage() {
             showToast(getErrorMessage(err), 'error');
             console.error(err);
         } finally {
+            setIsDeletingContact(false);
             setConfirmDeleteContact(null);
         }
     };
 
     const deleteAccount = async (id: number) => {
+        setIsDeletingAccount(true);
         try {
             await api.delete(`contact-accounts/${id}/`);
             showToast('Account removed from contact.', 'info');
@@ -224,6 +237,7 @@ export default function ContactsPage() {
             showToast(getErrorMessage(err), 'error');
             console.error(err);
         } finally {
+            setIsDeletingAccount(false);
             setConfirmDeleteAccount(null);
         }
     };
@@ -668,10 +682,15 @@ export default function ContactsPage() {
                                 </div>
                                 <button
                                     type="submit"
-                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={!form.first_name || !form.last_name || !form.phone1}
+                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    disabled={!form.first_name || !form.last_name || !form.phone1 || isSubmitting}
                                 >
-                                    {editingContact ? 'Update Contact' : 'Save Contact'}
+                                    {isSubmitting ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Saving…
+                                        </>
+                                    ) : (editingContact ? 'Update Contact' : 'Save Contact')}
                                 </button>
                             </form>
                         </div>
@@ -738,10 +757,15 @@ export default function ContactsPage() {
                                 </div>
                                 <button
                                     type="submit"
-                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={!accountForm.account_name || !accountForm.account_number}
+                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    disabled={!accountForm.account_name || !accountForm.account_number || isSubmittingAccount}
                                 >
-                                    {editingAccount ? 'Update Account' : 'Add Account'}
+                                    {isSubmittingAccount ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Saving…
+                                        </>
+                                    ) : (editingAccount ? 'Update Account' : 'Add Account')}
                                 </button>
                             </form>
                         </div>
@@ -754,12 +778,13 @@ export default function ContactsPage() {
                 message="This will permanently delete this contact and ALL of their associated accounts as well as Loan Records. This action is irreversible and cannot be undone."
                 confirmText="Delete Permanently"
                 variant="danger"
+                isLoading={isDeletingContact}
                 onConfirm={() => {
                     if (confirmDeleteContact !== null) {
                         deleteContact(confirmDeleteContact);
                     }
                 }}
-                onCancel={() => setConfirmDeleteContact(null)}
+                onCancel={() => !isDeletingContact && setConfirmDeleteContact(null)}
             />
             <ConfirmModal
                 isOpen={confirmDeleteAccount !== null}
@@ -767,12 +792,13 @@ export default function ContactsPage() {
                 message="This will remove the account from this contact."
                 confirmText="Remove Account"
                 variant="warning"
+                isLoading={isDeletingAccount}
                 onConfirm={() => {
                     if (confirmDeleteAccount !== null) {
                         deleteAccount(confirmDeleteAccount);
                     }
                 }}
-                onCancel={() => setConfirmDeleteAccount(null)}
+                onCancel={() => !isDeletingAccount && setConfirmDeleteAccount(null)}
             />
         </div >
     );

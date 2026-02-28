@@ -357,14 +357,14 @@ export default function LoansPage() {
                                                     <div className="text-[10px] text-slate-400 uppercase tracking-wide font-bold">
                                                         Total: <span className="text-slate-600 dark:text-slate-300">Rs. {parseFloat(loan.total_amount).toLocaleString()}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
+                                                    {/* <div className="flex items-center gap-2">
                                                         <button onClick={() => handleOpenModal(loan)} className="p-1.5 text-slate-400 hover:text-primary transition-colors">
                                                             <Edit3 size={16} />
                                                         </button>
                                                         <button onClick={() => setConfirmDelete(loan.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
                                                             <Trash2 size={16} />
                                                         </button>
-                                                    </div>
+                                                    </div> */}
                                                 </div>
                                             </div>
                                         </div>

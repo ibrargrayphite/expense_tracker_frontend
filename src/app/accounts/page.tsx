@@ -67,6 +67,8 @@ export default function AccountsPage() {
     const [form, setForm] = useState({ bank_name: 'JazzCash', account_name: '', account_number: '', iban: '', balance: '' });
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
     const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -138,11 +140,11 @@ export default function AccountsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             const payload = { ...form };
             if (form.bank_name === 'Cash') {
                 if (!form.account_name) payload.account_name = 'Cash Wallet';
-                // For Cash, if no account number is provided, we can use a timestamp or 'CASH'
                 if (!form.account_number) payload.account_number = `CASH-${Date.now()}`;
             }
 
@@ -160,10 +162,13 @@ export default function AccountsPage() {
         } catch (err) {
             showToast(getErrorMessage(err), 'error');
             console.error(err);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const deleteAccount = async (id: number) => {
+        setIsDeleting(true);
         try {
             await api.delete(`accounts/${id}/`);
             showToast('Account deleted.', 'info');
@@ -172,6 +177,7 @@ export default function AccountsPage() {
             showToast(getErrorMessage(err), 'error');
             console.error(err);
         } finally {
+            setIsDeleting(false);
             setConfirmDelete(null);
         }
     };
@@ -506,10 +512,15 @@ export default function AccountsPage() {
                                 )}
                                 <button
                                     type="submit"
-                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={!form.account_name || (form.bank_name !== 'Cash' && !form.account_number)}
+                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    disabled={!form.account_name || (form.bank_name !== 'Cash' && !form.account_number) || isSubmitting}
                                 >
-                                    {editingAccount ? 'Update Account' : 'Save Account'}
+                                    {isSubmitting ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Saving…
+                                        </>
+                                    ) : (editingAccount ? 'Update Account' : 'Save Account')}
                                 </button>
                             </form>
                         </div>
@@ -522,8 +533,9 @@ export default function AccountsPage() {
                 message="⚠️ This will permanently delete this account and ALL associated transaction records. This action cannot be undone."
                 confirmText="Delete Permanently"
                 variant="danger"
+                isLoading={isDeleting}
                 onConfirm={() => { if (confirmDelete !== null) deleteAccount(confirmDelete); }}
-                onCancel={() => setConfirmDelete(null)}
+                onCancel={() => !isDeleting && setConfirmDelete(null)}
             />
         </div >
     );

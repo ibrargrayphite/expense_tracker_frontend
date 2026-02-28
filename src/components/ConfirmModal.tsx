@@ -12,6 +12,7 @@ interface ConfirmModalProps {
     confirmText?: string;
     cancelText?: string;
     variant?: 'danger' | 'warning' | 'primary';
+    isLoading?: boolean;
 }
 
 export default function ConfirmModal({
@@ -22,7 +23,8 @@ export default function ConfirmModal({
     onCancel,
     confirmText = 'Confirm',
     cancelText = 'Cancel',
-    variant = 'danger'
+    variant = 'danger',
+    isLoading = false,
 }: ConfirmModalProps) {
     if (!isOpen) return null;
 
@@ -39,7 +41,11 @@ export default function ConfirmModal({
                         </div>
                         <h2 className="text-xl font-bold">{title}</h2>
                     </div>
-                    <button onClick={onCancel} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                    <button
+                        onClick={onCancel}
+                        disabled={isLoading}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
                         <X size={20} />
                     </button>
                 </div>
@@ -51,18 +57,25 @@ export default function ConfirmModal({
                 <div className="flex gap-3">
                     <button
                         onClick={onCancel}
-                        className="btn bg-slate-100 dark:bg-slate-800 text-secondary hover:bg-slate-200 dark:hover:bg-slate-700 flex-1"
+                        disabled={isLoading}
+                        className="btn bg-slate-100 dark:bg-slate-800 text-secondary hover:bg-slate-200 dark:hover:bg-slate-700 flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         {cancelText}
                     </button>
                     <button
                         onClick={onConfirm}
-                        className={`btn flex-1 shadow-lg ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20' :
+                        disabled={isLoading}
+                        className={`btn flex-1 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20' :
                             variant === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-yellow-500/20' :
                                 'btn-primary shadow-primary/20'
                             }`}
                     >
-                        {confirmText}
+                        {isLoading ? (
+                            <>
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Deleting…
+                            </>
+                        ) : confirmText}
                     </button>
                 </div>
             </div>
