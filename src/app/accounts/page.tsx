@@ -67,7 +67,7 @@ export default function AccountsPage() {
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const PAGE_SIZE = 5;
+    const PAGE_SIZE = 10;
 
     const toggleExpand = (id: number) => {
         setExpandedAccounts(prev => ({ ...prev, [id]: !prev[id] }));
@@ -111,6 +111,7 @@ export default function AccountsPage() {
         try {
             const params: any = {
                 page: currentPage,
+                page_size: 10,
                 search: search || undefined
             };
             const res = await api.get('accounts/', { params });
@@ -181,7 +182,7 @@ export default function AccountsPage() {
     return (
         <div className="min-h-screen">
             <Navbar />
-            <main className="max-w-4xl mx-auto px-4 mt-8 space-y-8 animate-fade-in">
+            <main className="mx-[20px] mt-8 space-y-8 animate-fade-in">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Manage Accounts</h1>
                     <button onClick={() => handleOpenModal()} className="btn btn-primary">
@@ -294,7 +295,7 @@ export default function AccountsPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {accounts.map((acc: Account) => (
                         <div key={acc.id} className="card overflow-hidden p-0 flex flex-col border border-slate-200 dark:border-slate-800 transition-all hover:shadow-lg">
                             <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

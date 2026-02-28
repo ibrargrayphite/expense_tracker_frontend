@@ -394,7 +394,7 @@ export default function TransactionsPage() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             <Navbar />
-            <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+            <main className="mx-[20px] py-8 space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h1 className="text-3xl font-black tracking-tight">Transaction History</h1>
                     <div className="flex flex-wrap gap-2">

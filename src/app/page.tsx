@@ -275,7 +275,7 @@ export default function Dashboard() {
   return (
     <>
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <main className="mx-[20px] py-8 space-y-8">
         {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>

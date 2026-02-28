@@ -156,7 +156,7 @@ export default function LoansPage() {
     return (
         <div className="min-h-screen">
             <Navbar />
-            <main className="max-w-5xl mx-auto px-4 mt-8 space-y-8 animate-fade-in">
+            <main className="mx-[20px] mt-8 space-y-8 animate-fade-in">
                 {/* Modern Filter & Sort Bar */}
                 <div className="card overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md mb-6 transition-all duration-300">
                     <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/30">

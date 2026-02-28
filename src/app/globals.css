@@ -347,10 +347,15 @@ textarea {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
 }
 
 .mt-8 {
   margin-top: 2rem;
+  margin-left: 2rem;
+  margin-right: 2rem;
+  margin-bottom: 2rem;
 }
 
 .mb-4 {

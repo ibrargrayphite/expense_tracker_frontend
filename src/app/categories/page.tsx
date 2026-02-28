@@ -117,7 +117,7 @@ export default function CategoriesPage() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             <Navbar />
-            <main className="max-w-6xl mx-auto px-4 py-12 space-y-12">
+            <main className="mx-[20px] py-8 space-y-12">
                 <header>
                     <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Categories</h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">Manage your expense types and income sources.</p>

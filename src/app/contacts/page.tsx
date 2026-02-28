@@ -227,7 +227,7 @@ export default function ContactsPage() {
     return (
         <div className="min-h-screen">
             <Navbar />
-            <main className="max-w-6xl mx-auto px-4 mt-8 space-y-6 animate-fade-in">
+            <main className="mx-[20px] mt-8 space-y-6 animate-fade-in">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Contacts</h1>
                     <button onClick={() => handleOpenModal()} className="btn btn-primary">
