@@ -317,34 +317,34 @@ export default function AccountsPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {isFetching ? (
-                        <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-slate-50 dark:bg-slate-950">
-                            <div className="relative flex items-center justify-center w-20 h-20">
-                                {/* Outer ring */}
-                                <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
-                                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-                                {/* Middle ring */}
-                                <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
-                                <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
-                                {/* Inner dot */}
-                                <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-                            </div>
-                            <div className="flex flex-col items-center gap-1">
-                                <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Accounts</p>
-                                <div className="flex gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
-                                </div>
+                {isFetching ? (
+                    <div className="min-h-[400px] flex flex-col items-center justify-center gap-6">
+                        <div className="relative flex items-center justify-center w-20 h-20">
+                            {/* Outer ring */}
+                            <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                            {/* Middle ring */}
+                            <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                            <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
+                            {/* Inner dot */}
+                            <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                            <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Accounts</p>
+                            <div className="flex gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
                             </div>
                         </div>
-                    ) : accounts.length === 0 ? (
-                        <div className="col-span-1 md:col-span-2 text-center py-20 text-slate-400">
-                            No accounts match your criteria.
-                        </div>
-                    ) : (
-                        accounts.map((acc: Account) => (
+                    </div>
+                ) : accounts.length === 0 ? (
+                    <div className="text-center py-20 text-slate-400">
+                        No accounts match your criteria.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {accounts.map((acc: Account) => (
                             <div key={acc.id} className="card overflow-hidden p-0 flex flex-col border border-slate-200 dark:border-slate-800 transition-all hover:shadow-lg">
                                 <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -443,16 +443,16 @@ export default function AccountsPage() {
                                     </div>
                                 )}
                             </div>
-                        ))
-                    )}
-                </div>
+                        ))}
+                    </div>
+                )}
                 <Pagination
                     currentPage={currentPage}
                     totalCount={totalCount}
                     pageSize={PAGE_SIZE}
                     onPageChange={setCurrentPage}
                 />
-            </main >
+            </main>
 
             {/* Modal */}
             {
