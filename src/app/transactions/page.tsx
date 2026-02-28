@@ -204,13 +204,13 @@ export default function TransactionsPage() {
             };
 
             const [historyRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes] = await Promise.all([
-                api.get('transactions/', { params }),
-                api.get('accounts/'),
-                api.get('loans/'),
-                api.get('contacts/'),
-                api.get('expense-categories/'),
-                api.get('income-sources/'),
-                api.get('contact-accounts/'),
+                api.get('activity/', { params }),
+                api.get('accounts/dropdown/'),
+                api.get('loans/dropdown/'),
+                api.get('contacts/dropdown/'),
+                api.get('expense-categories/dropdown/'),
+                api.get('income-sources/dropdown/'),
+                api.get('contact-accounts/dropdown/'),
             ]);
 
             setData({

@@ -103,7 +103,7 @@ export default function Dashboard() {
       const [accountsRes, loansRes, transactionsRes] = await Promise.all([
         api.get('accounts/'),
         api.get('loans/'),
-        api.get('transactions/'),
+        api.get('activity/'),
       ]);
       setData({
         accounts: accountsRes.data.results ?? accountsRes.data,
