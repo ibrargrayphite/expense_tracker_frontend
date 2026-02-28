@@ -94,6 +94,7 @@ export default function ContactsPage() {
     const [filterAccountCount, setFilterAccountCount] = useState<'ALL' | 'HAS_ACCOUNTS' | 'NO_ACCOUNTS'>('ALL');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [triggerFetch, setTriggerFetch] = useState(0);
+    const [isFetching, setIsFetching] = useState(true);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
@@ -101,6 +102,7 @@ export default function ContactsPage() {
     }, [user, loading, currentPage, triggerFetch]);
 
     const fetchContacts = async () => {
+        setIsFetching(true);
         try {
             const params: any = {
                 page: currentPage,
@@ -117,6 +119,8 @@ export default function ContactsPage() {
             setTotalCount(res.data.count);
         } catch (err) {
             console.error(err);
+        } finally {
+            setIsFetching(false);
         }
     };
 
@@ -335,190 +339,213 @@ export default function ContactsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
-                    {contacts.map((contact: Contact) => (
-                        <div key={contact.id} className="card p-6 flex flex-col gap-4">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-blue-800 dark:text-blue-200 font-bold shrink-0">
-                                        {contact.first_name[0]}{contact.last_name[0]}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold">{contact.first_name} {contact.last_name}</h3>
-                                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                                            <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
-                                                <Phone size={14} className="text-primary" /> {contact.phone1}
-                                            </p>
-                                            {contact.phone2 && (
-                                                <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
-                                                    <Phone size={14} className="text-primary" /> {contact.phone2}
-                                                </p>
-                                            )}
-                                            {contact.email && (
-                                                <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
-                                                    <Mail size={14} className="text-primary" /> {contact.email}
-                                                </p>
-                                            )}
+                    {isFetching ? (
+                        <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-slate-50 dark:bg-slate-950">
+                            <div className="relative flex items-center justify-center w-20 h-20">
+                                {/* Outer ring */}
+                                <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                                {/* Middle ring */}
+                                <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                                <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
+                                {/* Inner dot */}
+                                <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                            </div>
+                            <div className="flex flex-col items-center gap-1">
+                                <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Contacts</p>
+                                <div className="flex gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+                                </div>
+                            </div>
+                        </div>
+                    ) : contacts.length === 0 ? (
+                        <div className="text-center py-20 text-slate-400">
+                            No contacts match your criteria.
+                        </div>
+                    ) : (
+                        contacts.map((contact: Contact) => (
+                            <div key={contact.id} className="card p-6 flex flex-col gap-4">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-blue-800 dark:text-blue-200 font-bold shrink-0">
+                                            {contact.first_name[0]}{contact.last_name[0]}
                                         </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => toggleExpand(contact.id)}
-                                        className={`p-2 rounded-xl transition-all ${expandedContacts[contact.id] ? 'bg-primary text-white shadow-md' : 'text-primary hover:bg-primary/10'}`}
-                                        title="View Details"
-                                    >
-                                        <ArrowUpDown size={20} />
-                                    </button>
-                                    <button onClick={() => handleOpenModal(contact)} className="p-2 text-slate-400 hover:text-primary rounded-xl transition-colors">
-                                        <Edit3 size={20} />
-                                    </button>
-                                    <button onClick={() => setConfirmDeleteContact(contact.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-colors">
-                                        <Trash2 size={20} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Loan Summary Mini-Dashboard */}
-                            <div className="grid grid-cols-3 gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 mt-2">
-                                <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Total Lent</p>
-                                    <p className="text-sm font-black text-emerald-500">Rs. {(contact.loan_stats?.total_lent || 0).toLocaleString()}</p>
-                                </div>
-                                <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Borrowed</p>
-                                    <p className="text-sm font-black text-rose-500">Rs. {(contact.loan_stats?.total_loaned || 0).toLocaleString()}</p>
-                                </div>
-                                <div className={`text-center p-2 rounded-xl shadow-sm border ${(contact.loan_stats?.net_balance || 0) >= 0
-                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
-                                    : 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20'
-                                    }`}>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Net Balance</p>
-                                    <p className={`text-sm font-black ${(contact.loan_stats?.net_balance || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                        {(contact.loan_stats?.net_balance || 0) >= 0 ? '+' : ''} Rs. {(contact.loan_stats?.net_balance || 0).toLocaleString()}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="mt-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="font-bold flex items-center gap-2 text-sm uppercase tracking-wider text-secondary">
-                                        <CreditCard size={16} /> Linked Accounts
-                                    </h4>
-                                    <button
-                                        onClick={() => handleOpenAccountModal(contact)}
-                                        className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                                    >
-                                        <Plus size={14} /> Add
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {contact.accounts?.map((acc) => (
-                                        <div key={acc.id} className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl flex items-center justify-between group border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all">
-                                            <div>
-                                                <p className="font-bold text-[13px]">{acc.account_name} ({acc.bank_name})</p>
-                                                <p className="text-[10px] text-secondary">{acc.account_number}{acc.iban ? ` | IBAN: ${acc.iban}` : ''}</p>
-                                            </div>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {acc.bank_name !== "CASH" && (
-                                                    <>
-                                                        <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-1 text-slate-400 hover:text-primary transition-colors">
-                                                            <Edit3 size={12} />
-                                                        </button>
-                                                        <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    </>
+                                        <div>
+                                            <h3 className="text-xl font-bold">{contact.first_name} {contact.last_name}</h3>
+                                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                                <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
+                                                    <Phone size={14} className="text-primary" /> {contact.phone1}
+                                                </p>
+                                                {contact.phone2 && (
+                                                    <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
+                                                        <Phone size={14} className="text-primary" /> {contact.phone2}
+                                                    </p>
+                                                )}
+                                                {contact.email && (
+                                                    <p className="text-secondary flex items-center gap-1.5 text-sm font-medium">
+                                                        <Mail size={14} className="text-primary" /> {contact.email}
+                                                    </p>
                                                 )}
                                             </div>
                                         </div>
-                                    ))}
-                                    {(!contact.accounts || contact.accounts.length === 0) && (
-                                        <p className="text-[11px] text-secondary italic opacity-60">No linked personal accounts.</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => toggleExpand(contact.id)}
+                                            className={`p-2 rounded-xl transition-all ${expandedContacts[contact.id] ? 'bg-primary text-white shadow-md' : 'text-primary hover:bg-primary/10'}`}
+                                            title="View Details"
+                                        >
+                                            <ArrowUpDown size={20} />
+                                        </button>
+                                        <button onClick={() => handleOpenModal(contact)} className="p-2 text-slate-400 hover:text-primary rounded-xl transition-colors">
+                                            <Edit3 size={20} />
+                                        </button>
+                                        <button onClick={() => setConfirmDeleteContact(contact.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-colors">
+                                            <Trash2 size={20} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Loan Summary Mini-Dashboard */}
+                                <div className="grid grid-cols-3 gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 mt-2">
+                                    <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Total Lent</p>
+                                        <p className="text-sm font-black text-emerald-500">Rs. {(contact.loan_stats?.total_lent || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div className="text-center p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Borrowed</p>
+                                        <p className="text-sm font-black text-rose-500">Rs. {(contact.loan_stats?.total_loaned || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div className={`text-center p-2 rounded-xl shadow-sm border ${(contact.loan_stats?.net_balance || 0) >= 0
+                                        ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
+                                        : 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20'
+                                        }`}>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Net Balance</p>
+                                        <p className={`text-sm font-black ${(contact.loan_stats?.net_balance || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {(contact.loan_stats?.net_balance || 0) >= 0 ? '+' : ''} Rs. {(contact.loan_stats?.net_balance || 0).toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className={`transition-all duration-300 ease-in-out border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0 ${expandedContacts[contact.id] ? 'max-h-[1000px] opacity-100 visible' : 'max-h-0 opacity-0 invisible overflow-hidden pt-0 border-transparent'}`}>
+                                    <div className="flex items-center justify-between mb-4 mt-2">
+                                        <h4 className="font-bold flex items-center gap-2">
+                                            Linked Accounts
+                                            <span className="bg-slate-200 dark:bg-slate-800 text-xs px-2 py-0.5 rounded-full">{contact.accounts?.length}</span>
+                                        </h4>
+                                        <button
+                                            onClick={() => handleOpenAccountModal(contact)}
+                                            className="text-primary text-sm font-bold flex items-center gap-1 hover:underline"
+                                        >
+                                            <Plus size={16} /> Link Account
+                                        </button>
+                                    </div>
+
+                                    {contact.accounts && contact.accounts.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            {contact.accounts.map((acc: ContactAccount) => (
+                                                <div key={acc.id} className="p-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl flex items-center justify-between group">
+                                                    <div>
+                                                        <h5 className="font-bold text-sm">{acc.account_name}</h5>
+                                                        <p className="text-secondary text-xs">{acc.bank_name}</p>
+                                                        {acc.account_number && <p className="text-slate-500 text-[10px] font-medium tracking-wide mt-1">{acc.account_number}</p>}
+                                                        {acc.iban && <p className="text-slate-400 text-[10px] tracking-wide mt-0.5">{acc.iban}</p>}
+                                                    </div>
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
+                                                        <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-2 text-slate-400 hover:text-primary">
+                                                            <Edit3 size={16} />
+                                                        </button>
+                                                        <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-2 text-slate-400 hover:text-red-500">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-secondary bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">No accounts linked yet.</p>
                                     )}
                                 </div>
-                            </div>
 
-                            {/* Expandable Details Section */}
-                            {expandedContacts[contact.id] && (
-                                <div className="mt-4 space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800 animate-scale-in">
-                                    {/* Loans Section */}
-                                    <div>
-                                        <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
-                                            <HandCoins size={14} className="text-orange-500" /> Loans & Lents
-                                        </h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {contact.loans && contact.loans.filter((loan) => !loan.is_closed).length > 0 ? (
-                                                contact.loans.filter((loan) => !loan.is_closed).map((loan) => (
-                                                    <div key={loan.id} className={`p-3 rounded-xl border ${loan.is_closed ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-white dark:bg-slate-800 border-orange-100 dark:border-orange-900/30 shadow-sm'}`}>
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${loan.type === 'TAKEN' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'}`}>
-                                                                {loan.type === 'TAKEN' ? 'BORROWED' : 'LENT'}
-                                                            </span>
-                                                            <span className={`text-[10px] font-bold ${loan.is_closed ? 'text-slate-400' : 'text-orange-500'}`}>
-                                                                {loan.is_closed ? 'Settled' : 'Active'}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-sm font-black">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
-                                                        <p className="text-[10px] text-secondary truncate mt-1">{loan.description || 'No description'}</p>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-[11px] text-secondary italic opacity-60">No active loans with this contact.</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Transactions Section */}
-                                    <div>
-                                        <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
-                                            <HistoryIcon size={14} className="text-blue-500" /> Recent Activity
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {contact.transactions && contact.transactions.length > 0 ? (
-                                                contact.transactions.slice(0, 5).map((t) => {
-                                                    const mainSplit = t.accounts[0]?.splits[0];
-                                                    const type = mainSplit?.type || 'EXPENSE';
-                                                    const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(type);
-                                                    return (
-                                                        <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${isIncome
-                                                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
-                                                                    : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
-                                                                    }`}>
-                                                                    {type === 'INCOME' ? 'IN' : type === 'EXPENSE' ? 'EX' : type === 'LOAN_TAKEN' ? 'LT' : type === 'MONEY_LENT' ? 'ML' : type === 'REPAYMENT' ? 'RP' : 'RB'}
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-[13px] font-bold">{t.note || type.replace('_', ' ')}</p>
-                                                                    <p className="text-[9px] text-secondary font-medium">
-                                                                        {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                                    </p>
-                                                                </div>
+                                {/* Expandable Details Section */}
+                                {expandedContacts[contact.id] && (
+                                    <div className="mt-4 space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800 animate-scale-in">
+                                        {/* Loans Section */}
+                                        <div>
+                                            <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
+                                                <HandCoins size={14} className="text-orange-500" /> Loans & Lents
+                                            </h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {contact.loans && contact.loans.filter((loan) => !loan.is_closed).length > 0 ? (
+                                                    contact.loans.filter((loan) => !loan.is_closed).map((loan) => (
+                                                        <div key={loan.id} className={`p-3 rounded-xl border ${loan.is_closed ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-white dark:bg-slate-800 border-orange-100 dark:border-orange-900/30 shadow-sm'}`}>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${loan.type === 'TAKEN' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'}`}>
+                                                                    {loan.type === 'TAKEN' ? 'BORROWED' : 'LENT'}
+                                                                </span>
+                                                                <span className={`text-[10px] font-bold ${loan.is_closed ? 'text-slate-400' : 'text-orange-500'}`}>
+                                                                    {loan.is_closed ? 'Settled' : 'Active'}
+                                                                </span>
                                                             </div>
-                                                            <p className={`text-[13px] font-black ${isIncome
-                                                                ? 'text-emerald-500'
-                                                                : 'text-rose-500'
-                                                                }`}>
-                                                                {isIncome ? '+' : '-'} Rs. {parseFloat(t.total_amount).toLocaleString()}
-                                                            </p>
+                                                            <p className="text-sm font-black">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
+                                                            <p className="text-[10px] text-secondary truncate mt-1">{loan.description || 'No description'}</p>
                                                         </div>
-                                                    );
-                                                })
-                                            ) : (
-                                                <div className="text-center py-4 text-[11px] text-secondary italic opacity-60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                                                    No activity history.
-                                                </div>
-                                            )}
+                                                    ))
+                                                ) : (
+                                                    <p className="text-[11px] text-secondary italic opacity-60">No active loans with this contact.</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Transactions Section */}
+                                        <div>
+                                            <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
+                                                <HistoryIcon size={14} className="text-blue-500" /> Recent Activity
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {contact.transactions && contact.transactions.length > 0 ? (
+                                                    contact.transactions.slice(0, 5).map((t) => {
+                                                        const mainSplit = t.accounts[0]?.splits[0];
+                                                        const type = mainSplit?.type || 'EXPENSE';
+                                                        const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(type);
+                                                        return (
+                                                            <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${isIncome
+                                                                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
+                                                                        : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
+                                                                        }`}>
+                                                                        {type === 'INCOME' ? 'IN' : type === 'EXPENSE' ? 'EX' : type === 'LOAN_TAKEN' ? 'LT' : type === 'MONEY_LENT' ? 'ML' : type === 'REPAYMENT' ? 'RP' : 'RB'}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[13px] font-bold">{t.note || type.replace('_', ' ')}</p>
+                                                                        <p className="text-[9px] text-secondary font-medium">
+                                                                            {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <p className={`text-[13px] font-black ${isIncome
+                                                                    ? 'text-emerald-500'
+                                                                    : 'text-rose-500'
+                                                                    }`}>
+                                                                    {isIncome ? '+' : '-'} Rs. {parseFloat(t.total_amount).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="text-center py-4 text-[11px] text-secondary italic opacity-60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                                                        No activity history.
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                    {contacts.length === 0 && (
-                        <div className="text-center py-20 border-2 border-dashed border-border rounded-3xl text-secondary">
-                            No contacts added yet.
-                        </div>
+                                )}
+                            </div>
+                        ))
                     )}
                 </div>
 
@@ -528,7 +555,7 @@ export default function ContactsPage() {
                     pageSize={PAGE_SIZE}
                     onPageChange={setCurrentPage}
                 />
-            </main>
+            </main >
 
             {/* Contact Modal */}
             {

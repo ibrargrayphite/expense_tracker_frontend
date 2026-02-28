@@ -148,6 +148,7 @@ export default function TransactionsPage() {
     const [filterDateTo, setFilterDateTo] = useState('');
     const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
     const [triggerFetch, setTriggerFetch] = useState(0);
+    const [isFetching, setIsFetching] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
 
     // Pagination state
@@ -196,6 +197,7 @@ export default function TransactionsPage() {
     }, [user, loading, currentPage, triggerFetch]);
 
     const fetchData = async () => {
+        setIsFetching(true);
         try {
             const params: any = {
                 page: currentPage,
@@ -243,6 +245,8 @@ export default function TransactionsPage() {
         } catch (err) {
             console.error(err);
             showToast(getErrorMessage(err), 'error');
+        } finally {
+            setIsFetching(false);
         }
     };
 
@@ -581,134 +585,157 @@ export default function TransactionsPage() {
                 {/* Tabular List */}
                 <div className="card overflow-hidden border-none shadow-sm bg-white dark:bg-slate-900">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Date</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">From</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">To</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Type</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Note</th>
-                                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Receipt</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {combinedTransactions.map(t => {
-                                    const isIncome = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type)));
-                                    const isExpense = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['EXPENSE', 'MONEY_LENT', 'LOAN_REPAYMENT'].includes(s.type)));
+                        {isFetching ? (
+                            <div className="p-20 flex flex-col items-center justify-center space-y-4">
+                                <div className="relative flex items-center justify-center w-20 h-20">
+                                    {/* Outer ring */}
+                                    <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                                    {/* Middle ring */}
+                                    <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                                    <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
+                                    {/* Inner dot */}
+                                    <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                                </div>
+                                <div className="flex flex-col items-center gap-1">
+                                    <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Transactions</p>
+                                    <div className="flex gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Date</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">From</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">To</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Type</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Note</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Receipt</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {combinedTransactions.map(t => {
+                                        const isIncome = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(s.type)));
+                                        const isExpense = !t.is_internal && (t as Transaction).accounts.some(acc => acc.splits.some(s => ['EXPENSE', 'MONEY_LENT', 'LOAN_REPAYMENT'].includes(s.type)));
 
-                                    let fromDisplay: React.ReactNode = <span className="text-slate-300">-</span>;
-                                    let toDisplay: React.ReactNode = <span className="text-slate-300">-</span>;
+                                        let fromDisplay: React.ReactNode = <span className="text-slate-300">-</span>;
+                                        let toDisplay: React.ReactNode = <span className="text-slate-300">-</span>;
 
-                                    if (t.is_internal) {
-                                        const it = t as InternalTransaction;
-                                        fromDisplay = (
-                                            <div className="flex flex-col leading-tight">
-                                                <span className="text-xs font-bold text-slate-900 dark:text-white">{it.from_account_name}</span>
-                                                <span className="text-[10px] text-slate-400">{it.from_bank_name} - {it.from_account_number}</span>
-                                            </div>
-                                        );
-                                        toDisplay = (
-                                            <div className="flex flex-col leading-tight">
-                                                <span className="text-xs font-bold text-slate-900 dark:text-white">{it.to_account_name}</span>
-                                                <span className="text-[10px] text-slate-400">{it.to_bank_name} - {it.to_account_number}</span>
-                                            </div>
-                                        );
-                                    } else {
-                                        const xt = t as Transaction;
-                                        const userAccounts = (
-                                            <div className="flex flex-col gap-1.5">
-                                                {xt.accounts.map(acc => (
-                                                    <div key={acc.id} className="flex flex-col leading-tight">
-                                                        <span className="text-xs font-bold text-slate-900 dark:text-white">{acc.account_name}</span>
-                                                        <span className="text-[10px] text-slate-400">{acc.bank_name} - {acc.account_number}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                        const contactAccount = (
-                                            <div className="flex flex-col leading-tight">
-                                                <span className="text-xs font-bold text-slate-900 dark:text-white">{xt.contact_account_name || xt.contact_name || 'N/A'}</span>
-                                                {xt.contact_account_number && (
-                                                    <span className="text-[10px] text-slate-400">{xt.contact_bank_name} - {xt.contact_account_number}</span>
-                                                )}
-                                            </div>
-                                        );
-
-                                        const type = xt.accounts[0]?.splits[0]?.type;
-                                        if (['EXPENSE'].includes(type)) {
-                                            fromDisplay = userAccounts;
-                                            toDisplay = <span className="text-slate-300">-</span>;
-                                        } else if (['INCOME'].includes(type)) {
-                                            fromDisplay = <span className="text-slate-300">-</span>;
-                                            toDisplay = userAccounts;
-                                        } else if (['LOAN_TAKEN', 'REIMBURSEMENT'].includes(type)) {
-                                            fromDisplay = contactAccount;
-                                            toDisplay = userAccounts;
-                                        } else if (['LOAN_REPAYMENT', 'MONEY_LENT'].includes(type)) {
-                                            fromDisplay = userAccounts;
-                                            toDisplay = contactAccount;
-                                        }
-                                    }
-
-                                    return (
-                                        <tr key={`${t.is_internal ? 'int' : 'ext'}-${t.id}`} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                            <td className="p-4 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{format(new Date(t.date), 'MMM dd, yyyy')}</span>
-                                                    <span className="text-[10px] text-slate-400">{format(new Date(t.date), 'hh:mm a')}</span>
+                                        if (t.is_internal) {
+                                            const it = t as InternalTransaction;
+                                            fromDisplay = (
+                                                <div className="flex flex-col leading-tight">
+                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{it.from_account_name}</span>
+                                                    <span className="text-[10px] text-slate-400">{it.from_bank_name} - {it.from_account_number}</span>
                                                 </div>
-                                            </td>
-                                            <td className="p-4 min-w-[150px]">
-                                                {fromDisplay}
-                                            </td>
-                                            <td className="p-4 min-w-[150px]">
-                                                {toDisplay}
-                                            </td>
-                                            <td className="p-4">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${t.is_internal ? 'bg-blue-500/10 text-blue-500' :
-                                                    isIncome ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
-                                                    }`}>
-                                                    {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split' : (t as Transaction).accounts[0]?.splits[0]?.type?.replace('_', ' ') || '-'}
-                                                </span>
-                                            </td>
-                                            <td className="p-4">
-                                                <span className={`text-sm font-black ${t.is_internal ? 'text-slate-500' :
-                                                    isIncome ? 'text-green-600' : 'text-red-500'
-                                                    }`}>
-                                                    {t.is_internal ? '' : isIncome ? '+' : '-'} Rs. {parseFloat((t as any).total_amount || (t as any).amount).toLocaleString()}
-                                                </span>
-                                            </td>
-                                            <td className="p-4">
-                                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 italic">
-                                                    {(t as Transaction).expense_category_name || (t as Transaction).income_source_name || '-'}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 max-w-[200px]">
-                                                <p className="text-xs text-slate-400 truncate" title={(t as Transaction).note}>
-                                                    {(t as Transaction).note || '-'}
-                                                </p>
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                {(t as any).image ? (
-                                                    <button
-                                                        onClick={() => setPreviewImage((t as any).image)}
-                                                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                                    >
-                                                        <ImageIcon size={18} />
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-slate-300">-</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                        {combinedTransactions.length === 0 && (
+                                            );
+                                            toDisplay = (
+                                                <div className="flex flex-col leading-tight">
+                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{it.to_account_name}</span>
+                                                    <span className="text-[10px] text-slate-400">{it.to_bank_name} - {it.to_account_number}</span>
+                                                </div>
+                                            );
+                                        } else {
+                                            const xt = t as Transaction;
+                                            const userAccounts = (
+                                                <div className="flex flex-col gap-1.5">
+                                                    {xt.accounts.map(acc => (
+                                                        <div key={acc.id} className="flex flex-col leading-tight">
+                                                            <span className="text-xs font-bold text-slate-900 dark:text-white">{acc.account_name}</span>
+                                                            <span className="text-[10px] text-slate-400">{acc.bank_name} - {acc.account_number}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                            const contactAccount = (
+                                                <div className="flex flex-col leading-tight">
+                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{xt.contact_account_name || xt.contact_name || 'N/A'}</span>
+                                                    {xt.contact_account_number && (
+                                                        <span className="text-[10px] text-slate-400">{xt.contact_bank_name} - {xt.contact_account_number}</span>
+                                                    )}
+                                                </div>
+                                            );
+
+                                            const type = xt.accounts[0]?.splits[0]?.type;
+                                            if (['EXPENSE'].includes(type)) {
+                                                fromDisplay = userAccounts;
+                                                toDisplay = <span className="text-slate-300">-</span>;
+                                            } else if (['INCOME'].includes(type)) {
+                                                fromDisplay = <span className="text-slate-300">-</span>;
+                                                toDisplay = userAccounts;
+                                            } else if (['LOAN_TAKEN', 'REIMBURSEMENT'].includes(type)) {
+                                                fromDisplay = contactAccount;
+                                                toDisplay = userAccounts;
+                                            } else if (['LOAN_REPAYMENT', 'MONEY_LENT'].includes(type)) {
+                                                fromDisplay = userAccounts;
+                                                toDisplay = contactAccount;
+                                            }
+                                        }
+
+                                        return (
+                                            <tr key={`${t.is_internal ? 'int' : 'ext'}-${t.id}`} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                                <td className="p-4 whitespace-nowrap">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-slate-900 dark:text-white">{format(new Date(t.date), 'MMM dd, yyyy')}</span>
+                                                        <span className="text-[10px] text-slate-400">{format(new Date(t.date), 'hh:mm a')}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 min-w-[150px]">
+                                                    {fromDisplay}
+                                                </td>
+                                                <td className="p-4 min-w-[150px]">
+                                                    {toDisplay}
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${t.is_internal ? 'bg-blue-500/10 text-blue-500' :
+                                                        isIncome ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+                                                        }`}>
+                                                        {t.is_internal ? 'Transfer' : (t as Transaction).accounts.length > 1 ? 'Split' : (t as Transaction).accounts[0]?.splits[0]?.type?.replace('_', ' ') || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={`text-sm font-black ${t.is_internal ? 'text-slate-500' :
+                                                        isIncome ? 'text-green-600' : 'text-red-500'
+                                                        }`}>
+                                                        {t.is_internal ? '' : isIncome ? '+' : '-'} Rs. {parseFloat((t as any).total_amount || (t as any).amount).toLocaleString()}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 italic">
+                                                        {(t as Transaction).expense_category_name || (t as Transaction).income_source_name || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 max-w-[200px]">
+                                                    <p className="text-xs text-slate-400 truncate" title={(t as Transaction).note}>
+                                                        {(t as Transaction).note || '-'}
+                                                    </p>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    {(t as any).image ? (
+                                                        <button
+                                                            onClick={() => setPreviewImage((t as any).image)}
+                                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                                        >
+                                                            <ImageIcon size={18} />
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-slate-300">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+                        {!isFetching && combinedTransactions.length === 0 && (
                             <div className="text-center py-20 text-slate-400">
                                 No transactions match your criteria.
                             </div>

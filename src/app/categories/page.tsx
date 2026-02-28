@@ -10,6 +10,7 @@ import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getErrorMessage } from '@/lib/error-handler';
 import Pagination from '@/components/Pagination';
+import { div } from 'framer-motion/client';
 
 interface Category {
     id: number;
@@ -111,7 +112,28 @@ export default function CategoriesPage() {
     };
 
     if (loading || fetching) {
-        return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-slate-50 dark:bg-slate-950">
+                <div className="relative flex items-center justify-center w-20 h-20">
+                    {/* Outer ring */}
+                    <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                    {/* Middle ring */}
+                    <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                    <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
+                    {/* Inner dot */}
+                    <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                    <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Categories</p>
+                    <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (

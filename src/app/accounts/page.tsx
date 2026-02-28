@@ -81,6 +81,7 @@ export default function AccountsPage() {
     const [sortBy, setSortBy] = useState<'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc'>('balance_desc');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [triggerFetch, setTriggerFetch] = useState(0);
+    const [isFetching, setIsFetching] = useState(true);
 
     const totalBalance = accounts.reduce((s, a) => s + parseFloat(a.balance), 0);
 
@@ -90,6 +91,7 @@ export default function AccountsPage() {
     }, [user, loading, currentPage, triggerFetch]);
 
     const fetchAccounts = async () => {
+        setIsFetching(true);
         try {
             const params: any = {
                 page: currentPage,
@@ -108,6 +110,8 @@ export default function AccountsPage() {
             setTotalCount(res.data.count);
         } catch (err) {
             console.error(err);
+        } finally {
+            setIsFetching(false);
         }
     };
 
@@ -304,52 +308,73 @@ export default function AccountsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {accounts.map((acc: Account) => (
-                        <div key={acc.id} className="card overflow-hidden p-0 flex flex-col border border-slate-200 dark:border-slate-800 transition-all hover:shadow-lg">
-                            <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-4 w-full sm:w-auto">
-                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold shrink-0" style={{ backgroundColor: BANK_COLORS[acc.bank_name]?.bg || BANK_COLORS.default.bg, color: BANK_COLORS[acc.bank_name]?.text || BANK_COLORS.default.text }}>
-                                        {acc.bank_name[0]}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold truncate">{acc.account_name}</h3>
-                                        {acc.bank_name !== 'Cash' && (
-                                            <p className="text-sm text-secondary">
-                                                {acc.bank_name}
-                                                {acc.account_number ? ` - ${acc.account_number}` : ''}
-                                                {acc.iban ? ` (IBAN: ${acc.iban})` : ''}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
-                                    <div className="text-left sm:text-left">
-                                        <p className="text-sm text-secondary font-medium">Balance</p>
-                                        <p className="text-lg sm:text-xl font-bold text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {acc.bank_name !== 'CASH' && (
-                                            <>
-                                                <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
-                                                    <Edit3 size={20} />
-                                                </button>
-                                                <button onClick={() => setConfirmDelete(acc.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                                                    <Trash2 size={20} />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
+                    {isFetching ? (
+                        <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-slate-50 dark:bg-slate-950">
+                            <div className="relative flex items-center justify-center w-20 h-20">
+                                {/* Outer ring */}
+                                <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                                {/* Middle ring */}
+                                <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                                <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
+                                {/* Inner dot */}
+                                <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                            </div>
+                            <div className="flex flex-col items-center gap-1">
+                                <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Accounts</p>
+                                <div className="flex gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
                                 </div>
                             </div>
                         </div>
-                    ))}
-                    {accounts.length === 0 && (
-                        <div className="text-center py-20 border-2 border-dashed border-border rounded-3xl text-secondary">
-                            No accounts added yet. Click "Add Account" to get started.
+                    ) : accounts.length === 0 ? (
+                        <div className="col-span-1 md:col-span-2 text-center py-20 text-slate-400">
+                            No accounts match your criteria.
                         </div>
+                    ) : (
+                        accounts.map((acc: Account) => (
+                            <div key={acc.id} className="card overflow-hidden p-0 flex flex-col border border-slate-200 dark:border-slate-800 transition-all hover:shadow-lg">
+                                <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold shrink-0" style={{ backgroundColor: BANK_COLORS[acc.bank_name]?.bg || BANK_COLORS.default.bg, color: BANK_COLORS[acc.bank_name]?.text || BANK_COLORS.default.text }}>
+                                            {acc.bank_name[0]}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold truncate">{acc.account_name}</h3>
+                                            {acc.bank_name !== 'Cash' && (
+                                                <p className="text-sm text-secondary">
+                                                    {acc.bank_name}
+                                                    {acc.account_number ? ` - ${acc.account_number}` : ''}
+                                                    {acc.iban ? ` (IBAN: ${acc.iban})` : ''}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
+                                        <div className="text-left sm:text-left">
+                                            <p className="text-sm text-secondary font-medium">Balance</p>
+                                            <p className="text-lg sm:text-xl font-bold text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {acc.bank_name !== 'CASH' && (
+                                                <>
+                                                    <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
+                                                        <Edit3 size={20} />
+                                                    </button>
+                                                    <button onClick={() => setConfirmDelete(acc.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                                                        <Trash2 size={20} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
                     )}
                 </div>
-
                 <Pagination
                     currentPage={currentPage}
                     totalCount={totalCount}
