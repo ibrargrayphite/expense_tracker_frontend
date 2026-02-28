@@ -36,6 +36,7 @@ interface Loan {
     remaining_amount: string;
     description: string;
     is_closed: boolean;
+    created_at: string;
 }
 
 interface Transaction {
@@ -473,38 +474,77 @@ export default function ContactsPage() {
                                 {expandedContacts[contact.id] && (
                                     <div className="mt-4 space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800 animate-scale-in">
                                         {/* Loans Section */}
-                                        <div>
-                                            <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
-                                                <HandCoins size={14} className="text-orange-500" /> Loans & Lents
-                                            </h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {contact.loans && contact.loans.filter((loan) => !loan.is_closed).length > 0 ? (
-                                                    contact.loans.filter((loan) => !loan.is_closed).map((loan) => (
-                                                        <div key={loan.id} className={`p-3 rounded-xl border ${loan.is_closed ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-white dark:bg-slate-800 border-orange-100 dark:border-orange-900/30 shadow-sm'}`}>
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${loan.type === 'TAKEN' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'}`}>
-                                                                    {loan.type === 'TAKEN' ? 'BORROWED' : 'LENT'}
-                                                                </span>
-                                                                <span className={`text-[10px] font-bold ${loan.is_closed ? 'text-slate-400' : 'text-orange-500'}`}>
-                                                                    {loan.is_closed ? 'Settled' : 'Active'}
-                                                                </span>
+                                        {(() => {
+                                            const activeLoans = contact.loans?.filter((loan) => !loan.is_closed).slice(0, 5) ?? [];
+                                            return activeLoans.length > 0 ? (
+                                                <div>
+                                                    <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
+                                                        <HandCoins size={14} className="text-orange-500" /> Recent Loans & Lents
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                                                        {activeLoans.map((loan) => (
+                                                            <div key={loan.id} className="p-3 rounded-xl border bg-white dark:bg-slate-800 border-orange-100 dark:border-orange-900/30 shadow-sm flex flex-col gap-2">
+
+                                                                {/* Header: Type badge + Status */}
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${loan.type === 'TAKEN' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/20' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20'}`}>
+                                                                        {loan.type === 'TAKEN' ? 'BORROWED' : 'LENT'}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-500/10 px-2 py-0.5 rounded-full">
+                                                                        Active
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Amounts */}
+                                                                <div className="flex items-end justify-between">
+                                                                    <div>
+                                                                        <p className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Remaining</p>
+                                                                        <p className="text-base font-black text-slate-800 dark:text-white">
+                                                                            Rs. {parseFloat(loan.remaining_amount).toLocaleString()}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Total</p>
+                                                                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                                                                            Rs. {parseFloat(loan.total_amount).toLocaleString()}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Progress bar: remaining vs total */}
+                                                                {loan.total_amount && (
+                                                                    <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                                                                        <div
+                                                                            className={`h-1.5 rounded-full ${loan.type === 'TAKEN' ? 'bg-rose-400' : 'bg-emerald-400'}`}
+                                                                            style={{ width: `${Math.min((parseFloat(loan.remaining_amount) / parseFloat(loan.total_amount)) * 100, 100)}%` }}
+                                                                        />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Description */}
+                                                                <p className="text-[11px] text-secondary truncate">
+                                                                    {loan.description || <span className="italic opacity-50">No description</span>}
+                                                                </p>
+
+                                                                {/* Date */}
+                                                                <p className="text-[9px] text-slate-400 font-medium mt-auto">
+                                                                    {new Date(loan.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                                                                </p>
                                                             </div>
-                                                            <p className="text-sm font-black">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
-                                                            <p className="text-[10px] text-secondary truncate mt-1">{loan.description || 'No description'}</p>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <p className="text-[11px] text-secondary italic opacity-60">No active loans with this contact.</p>
-                                                )}
-                                            </div>
-                                        </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-[11px] text-secondary italic opacity-60">No active loans with this contact.</p>
+                                            );
+                                        })()}
 
                                         {/* Transactions Section */}
                                         <div>
                                             <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
                                                 <HistoryIcon size={14} className="text-blue-500" /> Recent Activity
                                             </h4>
-                                            <div className="space-y-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
                                                 {contact.transactions && contact.transactions.length > 0 ? (
                                                     contact.transactions.slice(0, 5).map((t) => {
                                                         const mainSplit = t.accounts[0]?.splits[0];
@@ -512,31 +552,25 @@ export default function ContactsPage() {
                                                         const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(type);
                                                         return (
                                                             <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${isIncome
-                                                                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10'
-                                                                        : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'
-                                                                        }`}>
+                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                    <div className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-bold ${isIncome ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10' : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'}`}>
                                                                         {type === 'INCOME' ? 'IN' : type === 'EXPENSE' ? 'EX' : type === 'LOAN_TAKEN' ? 'LT' : type === 'MONEY_LENT' ? 'ML' : type === 'REPAYMENT' ? 'RP' : 'RB'}
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[13px] font-bold">{t.note || type.replace('_', ' ')}</p>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-[13px] font-bold truncate">{t.note || type.replace('_', ' ')}</p>
                                                                         <p className="text-[9px] text-secondary font-medium">
-                                                                            {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                            {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
                                                                         </p>
                                                                     </div>
                                                                 </div>
-                                                                <p className={`text-[13px] font-black ${isIncome
-                                                                    ? 'text-emerald-500'
-                                                                    : 'text-rose-500'
-                                                                    }`}>
+                                                                <p className={`text-[13px] font-black shrink-0 ml-2 ${isIncome ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                                     {isIncome ? '+' : '-'} Rs. {parseFloat(t.total_amount).toLocaleString()}
                                                                 </p>
                                                             </div>
                                                         );
                                                     })
                                                 ) : (
-                                                    <div className="text-center py-4 text-[11px] text-secondary italic opacity-60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                                                    <div className="col-span-full text-center py-4 text-[11px] text-secondary italic opacity-60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                                                         No activity history.
                                                     </div>
                                                 )}
