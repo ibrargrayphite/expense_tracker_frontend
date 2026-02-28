@@ -193,7 +193,7 @@ export default function LoansPage() {
                                         className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Name..."
                                         value={search}
-                                        onChange={e => setSearch(e.target.value)}
+                                        onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                                     />
                                 </div>
                             </div>
@@ -203,7 +203,7 @@ export default function LoansPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterType}
-                                    onChange={e => setFilterType(e.target.value as any)}
+                                    onChange={e => { setFilterType(e.target.value as any); setCurrentPage(1); }}
                                 >
                                     <option value="ALL">All Records</option>
                                     <option value="TAKEN">Loans Taken</option>
@@ -216,7 +216,7 @@ export default function LoansPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterStatus}
-                                    onChange={e => setFilterStatus(e.target.value as any)}
+                                    onChange={e => { setFilterStatus(e.target.value as any); setCurrentPage(1); }}
                                 >
                                     <option value="ALL">All Status</option>
                                     <option value="ACTIVE">Active Only</option>
@@ -229,7 +229,7 @@ export default function LoansPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={sortBy}
-                                    onChange={e => setSortBy(e.target.value as any)}
+                                    onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}
                                 >
                                     <option value="amount_desc">💰 Highest Amount</option>
                                     <option value="amount_asc">💰 Lowest Amount</option>
@@ -246,14 +246,14 @@ export default function LoansPage() {
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Minimum"
                                         value={filterMinAmount}
-                                        onChange={e => setFilterMinAmount(e.target.value)}
+                                        onChange={e => { setFilterMinAmount(e.target.value); setCurrentPage(1); }}
                                     />
                                     <input
                                         type="number"
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Maximum"
                                         value={filterMaxAmount}
-                                        onChange={e => setFilterMaxAmount(e.target.value)}
+                                        onChange={e => { setFilterMaxAmount(e.target.value); setCurrentPage(1); }}
                                     />
                                 </div>
                             </div>

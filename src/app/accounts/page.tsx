@@ -226,7 +226,7 @@ export default function AccountsPage() {
                                         className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Name or platform…"
                                         value={search}
-                                        onChange={e => setSearch(e.target.value)}
+                                        onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                                     />
                                 </div>
                             </div>
@@ -236,7 +236,7 @@ export default function AccountsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterBank}
-                                    onChange={e => setFilterBank(e.target.value)}
+                                    onChange={e => { setFilterBank(e.target.value); setCurrentPage(1); }}
                                 >
                                     <option value="">All Platforms</option>
                                     {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
@@ -248,7 +248,7 @@ export default function AccountsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={sortBy}
-                                    onChange={e => setSortBy(e.target.value as any)}
+                                    onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}
                                 >
                                     <option value="balance_desc">💰 Highest Balance</option>
                                     <option value="balance_asc">💰 Lowest Balance</option>
@@ -265,14 +265,14 @@ export default function AccountsPage() {
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Minimum"
                                         value={filterMinBalance}
-                                        onChange={e => setFilterMinBalance(e.target.value)}
+                                        onChange={e => { setFilterMinBalance(e.target.value); setCurrentPage(1); }}
                                     />
                                     <input
                                         type="number"
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Maximum"
                                         value={filterMaxBalance}
-                                        onChange={e => setFilterMaxBalance(e.target.value)}
+                                        onChange={e => { setFilterMaxBalance(e.target.value); setCurrentPage(1); }}
                                     />
                                 </div>
                             </div>

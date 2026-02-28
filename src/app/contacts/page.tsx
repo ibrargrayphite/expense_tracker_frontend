@@ -271,7 +271,7 @@ export default function ContactsPage() {
                                         className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Name or phone…"
                                         value={search}
-                                        onChange={e => setSearch(e.target.value)}
+                                        onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                                     />
                                 </div>
                             </div>
@@ -281,7 +281,7 @@ export default function ContactsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={sortBy}
-                                    onChange={e => setSortBy(e.target.value as any)}
+                                    onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}
                                 >
                                     <option value="name_asc">🔤 Name A→Z</option>
                                     <option value="name_desc">🔤 Name Z→A</option>
@@ -295,7 +295,7 @@ export default function ContactsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterAccountCount}
-                                    onChange={e => setFilterAccountCount(e.target.value as any)}
+                                    onChange={e => { setFilterAccountCount(e.target.value as any); setCurrentPage(1); }}
                                 >
                                     <option value="ALL">All Contacts</option>
                                     <option value="HAS_ACCOUNTS">Has Linked Accounts</option>

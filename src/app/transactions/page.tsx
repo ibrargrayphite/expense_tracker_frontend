@@ -140,6 +140,9 @@ export default function TransactionsPage() {
     // Filter & sort state
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
+    const [filterMinAmount, setFilterMinAmount] = useState('');
+    const [filterMaxAmount, setFilterMaxAmount] = useState('');
     const [filterAccount, setFilterAccount] = useState('');
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
@@ -186,7 +189,7 @@ export default function TransactionsPage() {
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchData();
-    }, [user, loading, currentPage, search, filterType, filterAccount, filterDateFrom, filterDateTo, sortBy]);
+    }, [user, loading, currentPage, search, filterType, filterAccount, filterCategory, filterMinAmount, filterMaxAmount, filterDateFrom, filterDateTo, sortBy]);
 
     const fetchData = async () => {
         try {
@@ -195,6 +198,10 @@ export default function TransactionsPage() {
                 search: search || undefined,
                 type: filterType || undefined,
                 account: filterAccount || undefined,
+                expense_category: filterCategory?.startsWith('EXPENSE_') ? filterCategory.replace('EXPENSE_', '') : undefined,
+                income_source: filterCategory?.startsWith('INCOME_') ? filterCategory.replace('INCOME_', '') : undefined,
+                min_amount: filterMinAmount || undefined,
+                max_amount: filterMaxAmount || undefined,
                 start_date: filterDateFrom || undefined,
                 end_date: filterDateTo || undefined,
                 ordering: sortBy === 'date_desc' ? '-date' :
@@ -446,7 +453,7 @@ export default function TransactionsPage() {
                             <h3 className="font-bold text-slate-800 dark:text-slate-100">Filter Transactions</h3>
                         </div>
                         <div className="flex items-center gap-3">
-                            {(search || filterType || filterAccount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
+                            {(search || filterType || filterAccount || filterCategory || filterMinAmount || filterMaxAmount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
                                 <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold">
                                     Filters Applied
                                 </span>
@@ -463,55 +470,78 @@ export default function TransactionsPage() {
                     <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'max-h-[1000px] opacity-100 p-6' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Search Notes</label>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Search</label>
                                 <input
                                     type="text"
-                                    placeholder="Keywords..."
+                                    placeholder="Search Notes or Contacts"
                                     className="input-field h-11"
                                     value={search}
-                                    onChange={e => setSearch(e.target.value)}
+                                    onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type</label>
-                                <select className="input-field h-11" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                                <select className="input-field h-11" value={filterType} onChange={e => { setFilterType(e.target.value); setFilterCategory(''); setCurrentPage(1); }}>
                                     <option value="">All Types</option>
                                     {TX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Category / Source</label>
+                                <select className="input-field h-11" value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setCurrentPage(1); }}>
+                                    <option value="">All Categories</option>
+                                    <optgroup label="Expense Categories">
+                                        {data.expenseCategories.map(c => <option key={`exp_${c.id}`} value={`EXPENSE_${c.id}`}>{c.name}</option>)}
+                                    </optgroup>
+                                    <optgroup label="Income Sources">
+                                        {data.incomeSources.map(c => <option key={`inc_${c.id}`} value={`INCOME_${c.id}`}>{c.name}</option>)}
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account</label>
-                                <select className="input-field h-11" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
+                                <select className="input-field h-11" value={filterAccount} onChange={e => { setFilterAccount(e.target.value); setCurrentPage(1); }}>
                                     <option value="">All Accounts</option>
                                     {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Min Amount</label>
+                                <input type="number" placeholder="0.00" className="input-field h-11" value={filterMinAmount} onChange={e => { setFilterMinAmount(e.target.value); setCurrentPage(1); }} />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Max Amount</label>
+                                <input type="number" placeholder="0.00" className="input-field h-11" value={filterMaxAmount} onChange={e => { setFilterMaxAmount(e.target.value); setCurrentPage(1); }} />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">From Date</label>
+                                <input type="date" className="input-field h-11" value={filterDateFrom} onChange={e => { setFilterDateFrom(e.target.value); setCurrentPage(1); }} />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">To Date</label>
+                                <input type="date" className="input-field h-11" value={filterDateTo} onChange={e => { setFilterDateTo(e.target.value); setCurrentPage(1); }} />
+                            </div>
+                            <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort Order</label>
-                                <select className="input-field h-11" value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
+                                <select className="input-field h-11" value={sortBy} onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}>
                                     <option value="date_desc">Newest First</option>
                                     <option value="date_asc">Oldest First</option>
                                     <option value="amount_desc">Highest Amount</option>
                                     <option value="amount_asc">Lowest Amount</option>
                                 </select>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">From Date</label>
-                                <input type="date" className="input-field h-11" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">To Date</label>
-                                <input type="date" className="input-field h-11" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
-                            </div>
                         </div>
 
                         <div className="flex items-center justify-between text-[10px] text-slate-400 mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
                             <span>{totalCount} transactions match your criteria</span>
-                            {(search || filterType || filterAccount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
+                            {(search || filterType || filterAccount || filterCategory || filterMinAmount || filterMaxAmount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
                                 <button
                                     onClick={() => {
                                         setSearch('');
                                         setFilterType('');
+                                        setFilterCategory('');
+                                        setFilterMinAmount('');
+                                        setFilterMaxAmount('');
                                         setFilterAccount('');
                                         setFilterDateFrom('');
                                         setFilterDateTo('');
