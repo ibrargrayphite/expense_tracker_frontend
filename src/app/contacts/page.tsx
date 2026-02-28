@@ -451,13 +451,17 @@ export default function ContactsPage() {
                                                         {acc.account_number && <p className="text-slate-500 text-[10px] font-medium tracking-wide mt-1">{acc.account_number}</p>}
                                                         {acc.iban && <p className="text-slate-400 text-[10px] tracking-wide mt-0.5">{acc.iban}</p>}
                                                     </div>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                                        <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-2 text-slate-400 hover:text-primary">
-                                                            <Edit3 size={16} />
-                                                        </button>
-                                                        <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-2 text-slate-400 hover:text-red-500">
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        {acc.bank_name !== 'CASH' && (
+                                                            <>
+                                                                <button onClick={() => handleOpenAccountModal(contact, acc)} className="p-2 text-slate-400 hover:text-primary">
+                                                                    <Edit3 size={20} />
+                                                                </button>
+                                                                <button onClick={() => setConfirmDeleteAccount(acc.id)} className="p-2 text-slate-400 hover:text-red-500">
+                                                                    <Trash2 size={20} />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
