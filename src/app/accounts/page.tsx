@@ -80,39 +80,28 @@ export default function AccountsPage() {
     const [filterMaxBalance, setFilterMaxBalance] = useState('');
     const [sortBy, setSortBy] = useState<'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc'>('balance_desc');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [triggerFetch, setTriggerFetch] = useState(0);
 
-    const filteredAccounts = accounts
-        .filter(acc => {
-            const matchesSearch = !search ||
-                acc.account_name.toLowerCase().includes(search.toLowerCase()) ||
-                acc.bank_name.toLowerCase().includes(search.toLowerCase());
-            const matchesBank = !filterBank || acc.bank_name === filterBank;
-            const balance = parseFloat(acc.balance);
-            const matchesMinBalance = !filterMinBalance || balance >= parseFloat(filterMinBalance);
-            const matchesMaxBalance = !filterMaxBalance || balance <= parseFloat(filterMaxBalance);
-            return matchesSearch && matchesBank && matchesMinBalance && matchesMaxBalance;
-        })
-        .sort((a, b) => {
-            if (sortBy === 'balance_desc') return parseFloat(b.balance) - parseFloat(a.balance);
-            if (sortBy === 'balance_asc') return parseFloat(a.balance) - parseFloat(b.balance);
-            if (sortBy === 'name_asc') return a.account_name.localeCompare(b.account_name);
-            if (sortBy === 'name_desc') return b.account_name.localeCompare(a.account_name);
-            return 0;
-        });
-
-    const totalBalance = filteredAccounts.reduce((s, a) => s + parseFloat(a.balance), 0);
+    const totalBalance = accounts.reduce((s, a) => s + parseFloat(a.balance), 0);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchAccounts();
-    }, [user, loading, currentPage]);
+    }, [user, loading, currentPage, triggerFetch]);
 
     const fetchAccounts = async () => {
         try {
             const params: any = {
                 page: currentPage,
                 page_size: 10,
-                search: search || undefined
+                search: search || undefined,
+                bank_name: filterBank || undefined,
+                min_balance: filterMinBalance || undefined,
+                max_balance: filterMaxBalance || undefined,
+                ordering: sortBy === 'balance_desc' ? '-balance' :
+                    sortBy === 'balance_asc' ? 'balance' :
+                        sortBy === 'name_asc' ? 'account_name' :
+                            sortBy === 'name_desc' ? '-account_name' : '-created_at'
             };
             const res = await api.get('accounts/', { params });
             setAccounts(res.data.results);
@@ -226,7 +215,7 @@ export default function AccountsPage() {
                                         className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Name or platform…"
                                         value={search}
-                                        onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                                        onChange={e => setSearch(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -236,7 +225,7 @@ export default function AccountsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterBank}
-                                    onChange={e => { setFilterBank(e.target.value); setCurrentPage(1); }}
+                                    onChange={e => setFilterBank(e.target.value)}
                                 >
                                     <option value="">All Platforms</option>
                                     {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
@@ -248,7 +237,7 @@ export default function AccountsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={sortBy}
-                                    onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}
+                                    onChange={e => setSortBy(e.target.value as any)}
                                 >
                                     <option value="balance_desc">💰 Highest Balance</option>
                                     <option value="balance_asc">💰 Lowest Balance</option>
@@ -265,14 +254,14 @@ export default function AccountsPage() {
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Minimum"
                                         value={filterMinBalance}
-                                        onChange={e => { setFilterMinBalance(e.target.value); setCurrentPage(1); }}
+                                        onChange={e => setFilterMinBalance(e.target.value)}
                                     />
                                     <input
                                         type="number"
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Maximum"
                                         value={filterMaxBalance}
-                                        onChange={e => { setFilterMaxBalance(e.target.value); setCurrentPage(1); }}
+                                        onChange={e => setFilterMaxBalance(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -283,14 +272,33 @@ export default function AccountsPage() {
                                 <span>{totalCount} accounts found</span>
                                 <span className="font-bold text-primary italic">Page {currentPage} - Total on Page: Rs. {totalBalance.toLocaleString()}</span>
                             </div>
-                            {(search || filterBank || filterMinBalance || filterMaxBalance || sortBy !== 'balance_desc') && (
+                            <div className="flex gap-2 items-center">
+                                {(search || filterBank || filterMinBalance || filterMaxBalance || sortBy !== 'balance_desc') && (
+                                    <button
+                                        onClick={() => {
+                                            setSearch('');
+                                            setFilterBank('');
+                                            setFilterMinBalance('');
+                                            setFilterMaxBalance('');
+                                            setSortBy('balance_desc');
+                                            setCurrentPage(1);
+                                            setTriggerFetch(prev => prev + 1);
+                                        }}
+                                        className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => { setSearch(''); setFilterBank(''); setFilterMinBalance(''); setFilterMaxBalance(''); setSortBy('balance_desc'); setCurrentPage(1); }}
-                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    onClick={() => {
+                                        setCurrentPage(1);
+                                        setTriggerFetch(prev => prev + 1);
+                                    }}
+                                    className="btn btn-sm btn-primary px-4 rounded-full"
                                 >
-                                    Clear all filters
+                                    Apply Filters
                                 </button>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -147,6 +147,7 @@ export default function TransactionsPage() {
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
     const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+    const [triggerFetch, setTriggerFetch] = useState(0);
     const [showFilters, setShowFilters] = useState(false);
 
     // Pagination state
@@ -185,11 +186,14 @@ export default function TransactionsPage() {
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<{ id: number; isInternal: boolean } | null>(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+    const [downloadStartDate, setDownloadStartDate] = useState('');
+    const [downloadEndDate, setDownloadEndDate] = useState('');
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchData();
-    }, [user, loading, currentPage, search, filterType, filterAccount, filterCategory, filterMinAmount, filterMaxAmount, filterDateFrom, filterDateTo, sortBy]);
+    }, [user, loading, currentPage, triggerFetch]);
 
     const fetchData = async () => {
         try {
@@ -211,7 +215,7 @@ export default function TransactionsPage() {
             };
 
             const [historyRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes] = await Promise.all([
-                api.get('activity/', { params }),
+                api.get('transactions/', { params }),
                 api.get('accounts/dropdown/'),
                 api.get('loans/dropdown/'),
                 api.get('contacts/dropdown/'),
@@ -347,8 +351,8 @@ export default function TransactionsPage() {
         setIsDownloading(true);
         try {
             const params: any = {};
-            if (filterDateFrom) params.start_date = filterDateFrom;
-            if (filterDateTo) params.end_date = filterDateTo;
+            if (downloadStartDate) params.start_date = downloadStartDate;
+            if (downloadEndDate) params.end_date = downloadEndDate;
 
             const response = await api.get('transactions/export_excel/', {
                 params,
@@ -362,6 +366,7 @@ export default function TransactionsPage() {
             document.body.appendChild(link);
             link.click();
             link.remove();
+            setIsDownloadModalOpen(false);
         } catch (err) {
             console.error(err);
             showToast('Failed to download Excel', 'error');
@@ -436,7 +441,11 @@ export default function TransactionsPage() {
                             <ArrowRightLeft size={20} /> Internal Transfer
                         </button>
                         <button
-                            onClick={handleDownloadExcel}
+                            onClick={() => {
+                                setDownloadStartDate(filterDateFrom);
+                                setDownloadEndDate(filterDateTo);
+                                setIsDownloadModalOpen(true);
+                            }}
                             disabled={isDownloading}
                             className="btn btn-secondary border-green-200 text-green-600 flex items-center gap-2 hover:bg-green-50"
                         >
@@ -476,19 +485,19 @@ export default function TransactionsPage() {
                                     placeholder="Search Notes or Contacts"
                                     className="input-field h-11"
                                     value={search}
-                                    onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                                    onChange={e => setSearch(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type</label>
-                                <select className="input-field h-11" value={filterType} onChange={e => { setFilterType(e.target.value); setFilterCategory(''); setCurrentPage(1); }}>
+                                <select className="input-field h-11" value={filterType} onChange={e => { setFilterType(e.target.value); setFilterCategory(''); }}>
                                     <option value="">All Types</option>
                                     {TX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Category / Source</label>
-                                <select className="input-field h-11" value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setCurrentPage(1); }}>
+                                <select className="input-field h-11" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
                                     <option value="">All Categories</option>
                                     <optgroup label="Expense Categories">
                                         {data.expenseCategories.map(c => <option key={`exp_${c.id}`} value={`EXPENSE_${c.id}`}>{c.name}</option>)}
@@ -500,30 +509,30 @@ export default function TransactionsPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account</label>
-                                <select className="input-field h-11" value={filterAccount} onChange={e => { setFilterAccount(e.target.value); setCurrentPage(1); }}>
+                                <select className="input-field h-11" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
                                     <option value="">All Accounts</option>
                                     {data.accounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} - {a.account_number}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Min Amount</label>
-                                <input type="number" placeholder="0.00" className="input-field h-11" value={filterMinAmount} onChange={e => { setFilterMinAmount(e.target.value); setCurrentPage(1); }} />
+                                <input type="number" placeholder="0.00" className="input-field h-11" value={filterMinAmount} onChange={e => setFilterMinAmount(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Max Amount</label>
-                                <input type="number" placeholder="0.00" className="input-field h-11" value={filterMaxAmount} onChange={e => { setFilterMaxAmount(e.target.value); setCurrentPage(1); }} />
+                                <input type="number" placeholder="0.00" className="input-field h-11" value={filterMaxAmount} onChange={e => setFilterMaxAmount(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">From Date</label>
-                                <input type="date" className="input-field h-11" value={filterDateFrom} onChange={e => { setFilterDateFrom(e.target.value); setCurrentPage(1); }} />
+                                <input type="date" className="input-field h-11" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">To Date</label>
-                                <input type="date" className="input-field h-11" value={filterDateTo} onChange={e => { setFilterDateTo(e.target.value); setCurrentPage(1); }} />
+                                <input type="date" className="input-field h-11" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort Order</label>
-                                <select className="input-field h-11" value={sortBy} onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}>
+                                <select className="input-field h-11" value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
                                     <option value="date_desc">Newest First</option>
                                     <option value="date_asc">Oldest First</option>
                                     <option value="amount_desc">Highest Amount</option>
@@ -534,25 +543,37 @@ export default function TransactionsPage() {
 
                         <div className="flex items-center justify-between text-[10px] text-slate-400 mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
                             <span>{totalCount} transactions match your criteria</span>
-                            {(search || filterType || filterAccount || filterCategory || filterMinAmount || filterMaxAmount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
+                            <div className="flex items-center gap-3">
+                                {(search || filterType || filterAccount || filterCategory || filterMinAmount || filterMaxAmount || filterDateFrom || filterDateTo || sortBy !== 'date_desc') && (
+                                    <button
+                                        onClick={() => {
+                                            setSearch('');
+                                            setFilterType('');
+                                            setFilterCategory('');
+                                            setFilterMinAmount('');
+                                            setFilterMaxAmount('');
+                                            setFilterAccount('');
+                                            setFilterDateFrom('');
+                                            setFilterDateTo('');
+                                            setSortBy('date_desc');
+                                            setCurrentPage(1);
+                                            setTriggerFetch(prev => prev + 1);
+                                        }}
+                                        className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    >
+                                        Clear all filters
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => {
-                                        setSearch('');
-                                        setFilterType('');
-                                        setFilterCategory('');
-                                        setFilterMinAmount('');
-                                        setFilterMaxAmount('');
-                                        setFilterAccount('');
-                                        setFilterDateFrom('');
-                                        setFilterDateTo('');
-                                        setSortBy('date_desc');
                                         setCurrentPage(1);
+                                        setTriggerFetch(prev => prev + 1);
                                     }}
-                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    className="btn btn-sm btn-primary px-4 rounded-full"
                                 >
-                                    Clear all filters
+                                    Apply Filters
                                 </button>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1177,6 +1198,54 @@ export default function TransactionsPage() {
                     onConfirm={handleDelete}
                     onCancel={() => setConfirmDelete(null)}
                 />
+            )}
+
+            {isDownloadModalOpen && (
+                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setIsDownloadModalOpen(false)} />
+                    <div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in duration-200">
+                        <div className="p-8">
+                            <h2 className="text-2xl font-black mb-6">Download Excel</h2>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-secondary uppercase tracking-wider block mb-2">From Date</label>
+                                    <input
+                                        type="date"
+                                        className="input-field bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        value={downloadStartDate}
+                                        onChange={e => setDownloadStartDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-secondary uppercase tracking-wider block mb-2">To Date</label>
+                                    <input
+                                        type="date"
+                                        className="input-field bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                        value={downloadEndDate}
+                                        onChange={e => setDownloadEndDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={() => setIsDownloadModalOpen(false)}
+                                    className="flex-1 btn bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-2xl"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDownloadExcel}
+                                    disabled={isDownloading}
+                                    className="flex-1 btn btn-primary rounded-2xl flex items-center justify-center gap-2"
+                                >
+                                    <Download size={18} /> {isDownloading ? 'Downloading...' : 'Download'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {previewImage && (

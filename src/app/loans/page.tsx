@@ -36,6 +36,7 @@ export default function LoansPage() {
     const [filterMinAmount, setFilterMinAmount] = useState('');
     const [filterMaxAmount, setFilterMaxAmount] = useState('');
     const [sortBy, setSortBy] = useState<'amount_desc' | 'amount_asc' | 'name_asc' | 'name_desc'>('amount_desc');
+    const [triggerFetch, setTriggerFetch] = useState(0);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     useEffect(() => {
@@ -44,7 +45,7 @@ export default function LoansPage() {
             fetchLoans();
             fetchContacts();
         }
-    }, [user, loading, currentPage, search, filterType, filterStatus, filterMinAmount, filterMaxAmount, sortBy]);
+    }, [user, loading, currentPage, triggerFetch]);
 
     const fetchLoans = async () => {
         try {
@@ -193,7 +194,7 @@ export default function LoansPage() {
                                         className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Name..."
                                         value={search}
-                                        onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                                        onChange={e => setSearch(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -203,7 +204,7 @@ export default function LoansPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterType}
-                                    onChange={e => { setFilterType(e.target.value as any); setCurrentPage(1); }}
+                                    onChange={e => setFilterType(e.target.value as any)}
                                 >
                                     <option value="ALL">All Records</option>
                                     <option value="TAKEN">Loans Taken</option>
@@ -216,7 +217,7 @@ export default function LoansPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterStatus}
-                                    onChange={e => { setFilterStatus(e.target.value as any); setCurrentPage(1); }}
+                                    onChange={e => setFilterStatus(e.target.value as any)}
                                 >
                                     <option value="ALL">All Status</option>
                                     <option value="ACTIVE">Active Only</option>
@@ -229,7 +230,7 @@ export default function LoansPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={sortBy}
-                                    onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}
+                                    onChange={e => setSortBy(e.target.value as any)}
                                 >
                                     <option value="amount_desc">💰 Highest Amount</option>
                                     <option value="amount_asc">💰 Lowest Amount</option>
@@ -246,14 +247,14 @@ export default function LoansPage() {
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Minimum"
                                         value={filterMinAmount}
-                                        onChange={e => { setFilterMinAmount(e.target.value); setCurrentPage(1); }}
+                                        onChange={e => setFilterMinAmount(e.target.value)}
                                     />
                                     <input
                                         type="number"
                                         className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Maximum"
                                         value={filterMaxAmount}
-                                        onChange={e => { setFilterMaxAmount(e.target.value); setCurrentPage(1); }}
+                                        onChange={e => setFilterMaxAmount(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -263,14 +264,29 @@ export default function LoansPage() {
                             <span>
                                 Found {totalCount} matching records
                             </span>
-                            {(search || filterType !== 'ALL' || filterStatus !== 'ALL' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
+                            <div className="flex items-center gap-3">
+                                {(search || filterType !== 'ALL' || filterStatus !== 'ALL' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
+                                    <button
+                                        onClick={() => {
+                                            setSearch(''); setFilterType('ALL'); setFilterStatus('ALL'); setFilterMinAmount(''); setFilterMaxAmount(''); setSortBy('amount_desc');
+                                            setCurrentPage(1);
+                                            setTriggerFetch(prev => prev + 1);
+                                        }}
+                                        className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => { setSearch(''); setFilterType('ALL'); setFilterStatus('ALL'); setFilterMinAmount(''); setFilterMaxAmount(''); setSortBy('amount_desc'); setCurrentPage(1); }}
-                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    onClick={() => {
+                                        setCurrentPage(1);
+                                        setTriggerFetch(prev => prev + 1);
+                                    }}
+                                    className="btn btn-sm btn-primary px-4 rounded-full"
                                 >
-                                    Reset Filters
+                                    Apply Filters
                                 </button>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -93,11 +93,12 @@ export default function ContactsPage() {
     const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'accounts_asc' | 'accounts_desc'>('name_asc');
     const [filterAccountCount, setFilterAccountCount] = useState<'ALL' | 'HAS_ACCOUNTS' | 'NO_ACCOUNTS'>('ALL');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [triggerFetch, setTriggerFetch] = useState(0);
 
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchContacts();
-    }, [user, loading, currentPage, search, sortBy, filterAccountCount]);
+    }, [user, loading, currentPage, triggerFetch]);
 
     const fetchContacts = async () => {
         try {
@@ -271,7 +272,7 @@ export default function ContactsPage() {
                                         className="input-field pl-10 h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                         placeholder="Name or phone…"
                                         value={search}
-                                        onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                                        onChange={e => setSearch(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -281,7 +282,7 @@ export default function ContactsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={sortBy}
-                                    onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}
+                                    onChange={e => setSortBy(e.target.value as any)}
                                 >
                                     <option value="name_asc">🔤 Name A→Z</option>
                                     <option value="name_desc">🔤 Name Z→A</option>
@@ -295,7 +296,7 @@ export default function ContactsPage() {
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     value={filterAccountCount}
-                                    onChange={e => { setFilterAccountCount(e.target.value as any); setCurrentPage(1); }}
+                                    onChange={e => setFilterAccountCount(e.target.value as any)}
                                 >
                                     <option value="ALL">All Contacts</option>
                                     <option value="HAS_ACCOUNTS">Has Linked Accounts</option>
@@ -306,14 +307,29 @@ export default function ContactsPage() {
 
                         <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
                             <span>Found {totalCount} contacts matching criteria</span>
-                            {(search || filterAccountCount !== 'ALL' || sortBy !== 'name_asc') && (
+                            <div className="flex items-center gap-3">
+                                {(search || filterAccountCount !== 'ALL' || sortBy !== 'name_asc') && (
+                                    <button
+                                        onClick={() => {
+                                            setSearch(''); setFilterAccountCount('ALL'); setSortBy('name_asc');
+                                            setCurrentPage(1);
+                                            setTriggerFetch(prev => prev + 1);
+                                        }}
+                                        className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => { setSearch(''); setFilterAccountCount('ALL'); setSortBy('name_asc'); setCurrentPage(1); }}
-                                    className="text-primary font-bold hover:underline py-1 px-3 bg-primary/5 rounded-full"
+                                    onClick={() => {
+                                        setCurrentPage(1);
+                                        setTriggerFetch(prev => prev + 1);
+                                    }}
+                                    className="btn btn-sm btn-primary px-4 rounded-full"
                                 >
-                                    Reset Filters
+                                    Apply Filters
                                 </button>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
