@@ -7,14 +7,14 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/error-handler';
-import { User, Mail, Lock, Eye, EyeOff, Save, ArrowLeft, Shield } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Save, ArrowLeft, Shield, Phone } from 'lucide-react';
 
 export default function EditProfilePage() {
     const { user, loading, refreshUser } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
 
-    const [form, setForm] = useState({ first_name: '', last_name: '', email: '' });
+    const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone_number: '' });
     const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
 
     const [showCurrent, setShowCurrent] = useState(false);
@@ -31,6 +31,7 @@ export default function EditProfilePage() {
                 first_name: user.first_name || '',
                 last_name: user.last_name || '',
                 email: user.email || '',
+                phone_number: user.phone_number || '',
             });
         }
     }, [user, loading]);
@@ -449,6 +450,20 @@ export default function EditProfilePage() {
                                             value={form.email}
                                             onChange={e => setForm({ ...form, email: e.target.value })}
                                             required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="ep-field">
+                                    <label className="ep-label">Phone Number</label>
+                                    <div className="ep-input-wrap">
+                                        <Phone size={15} className="ep-input-icon" />
+                                        <input
+                                            type="tel"
+                                            className="ep-input with-left-icon"
+                                            placeholder="+1 (555) 000-0000"
+                                            value={form.phone_number}
+                                            onChange={e => setForm({ ...form, phone_number: e.target.value })}
                                         />
                                     </div>
                                 </div>
