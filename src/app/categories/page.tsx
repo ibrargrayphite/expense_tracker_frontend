@@ -117,30 +117,7 @@ export default function CategoriesPage() {
         }
     };
 
-    if (loading || fetching) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-slate-50 dark:bg-slate-950">
-                <div className="relative flex items-center justify-center w-20 h-20">
-                    {/* Outer ring */}
-                    <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
-                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-                    {/* Middle ring */}
-                    <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
-                    <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
-                    {/* Inner dot */}
-                    <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                    <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Categories</p>
-                    <div className="flex gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
-                    </div>
-                </div>
-            </div>
-        );
-    }
+
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -151,97 +128,120 @@ export default function CategoriesPage() {
                     <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">Manage your expense types and income sources.</p>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Expense Categories */}
-                    <section className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold flex items-center gap-3">
-                                <span className="w-2 h-8 bg-red-500 rounded-full" />
-                                Expense Categories
-                            </h2>
-                            <button
-                                onClick={() => handleOpenModal('EXPENSE')}
-                                className="btn btn-primary btn-sm flex items-center gap-2"
-                            >
-                                <Plus size={16} /> Add New
-                            </button>
+                {fetching ? (
+                    <div className="min-h-[400px] flex flex-col items-center justify-center gap-6">
+                        <div className="relative flex items-center justify-center w-20 h-20">
+                            {/* Outer ring */}
+                            <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                            {/* Middle ring */}
+                            <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
+                            <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
+                            {/* Inner dot */}
+                            <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
                         </div>
-                        <div className="grid gap-3">
-                            {expenseCategories.map(cat => (
-                                <div key={cat.id} className="card flex items-center justify-between p-4 group hover:border-red-500/30 transition-all">
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-slate-800 dark:text-slate-100 break-words">{cat.name}</h3>
-                                        {cat.description && <p className="text-xs text-slate-500 mt-1 break-words">{cat.description}</p>}
-                                    </div>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => handleOpenModal('EXPENSE', cat)} className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <Edit2 size={16} />
-                                        </button>
-                                        <button onClick={() => setDeleteConfig({ id: cat.id, type: 'EXPENSE' })} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                            {expenseCategories.length === 0 && (
-                                <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
-                                    No expense categories found.
-                                </div>
-                            )}
+                        <div className="flex flex-col items-center gap-1">
+                            <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Categories</p>
+                            <div className="flex gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+                            </div>
                         </div>
-                        <Pagination
-                            currentPage={expPage}
-                            totalCount={totalExpCount}
-                            pageSize={PAGE_SIZE}
-                            onPageChange={setExpPage}
-                        />
-                    </section>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Expense Categories */}
+                        <section className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold flex items-center gap-3">
+                                    <span className="w-2 h-8 bg-red-500 rounded-full" />
+                                    Expense Categories
+                                </h2>
+                                <button
+                                    onClick={() => handleOpenModal('EXPENSE')}
+                                    className="btn btn-primary btn-sm flex items-center gap-2"
+                                >
+                                    <Plus size={16} /> Add New
+                                </button>
+                            </div>
+                            <div className="grid gap-3">
+                                {expenseCategories.map(cat => (
+                                    <div key={cat.id} className="card flex items-center justify-between p-4 group hover:border-red-500/30 transition-all">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-slate-800 dark:text-slate-100 break-words">{cat.name}</h3>
+                                            {cat.description && <p className="text-xs text-slate-500 mt-1 break-words">{cat.description}</p>}
+                                        </div>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleOpenModal('EXPENSE', cat)} className="p-2 text-slate-400 hover:text-primary transition-colors">
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button onClick={() => setDeleteConfig({ id: cat.id, type: 'EXPENSE' })} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {expenseCategories.length === 0 && (
+                                    <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                                        No expense categories found.
+                                    </div>
+                                )}
+                            </div>
+                            <Pagination
+                                currentPage={expPage}
+                                totalCount={totalExpCount}
+                                pageSize={PAGE_SIZE}
+                                onPageChange={setExpPage}
+                            />
+                        </section>
 
-                    {/* Income Sources */}
-                    <section className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold flex items-center gap-3">
-                                <span className="w-2 h-8 bg-green-500 rounded-full" />
-                                Income Sources
-                            </h2>
-                            <button
-                                onClick={() => handleOpenModal('INCOME')}
-                                className="btn btn-primary btn-sm flex items-center gap-2"
-                            >
-                                <Plus size={16} /> Add New
-                            </button>
-                        </div>
-                        <div className="grid gap-3">
-                            {incomeSources.map(cat => (
-                                <div key={cat.id} className="card flex items-center justify-between p-4 group hover:border-green-500/30 transition-all">
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-slate-800 dark:text-slate-100 break-words">{cat.name}</h3>
-                                        {cat.description && <p className="text-xs text-slate-500 mt-1 break-words">{cat.description}</p>}
+                        {/* Income Sources */}
+                        <section className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold flex items-center gap-3">
+                                    <span className="w-2 h-8 bg-green-500 rounded-full" />
+                                    Income Sources
+                                </h2>
+                                <button
+                                    onClick={() => handleOpenModal('INCOME')}
+                                    className="btn btn-primary btn-sm flex items-center gap-2"
+                                >
+                                    <Plus size={16} /> Add New
+                                </button>
+                            </div>
+                            <div className="grid gap-3">
+                                {incomeSources.map(cat => (
+                                    <div key={cat.id} className="card flex items-center justify-between p-4 group hover:border-green-500/30 transition-all">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-slate-800 dark:text-slate-100 break-words">{cat.name}</h3>
+                                            {cat.description && <p className="text-xs text-slate-500 mt-1 break-words">{cat.description}</p>}
+                                        </div>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleOpenModal('INCOME', cat)} className="p-2 text-slate-400 hover:text-primary transition-colors">
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button onClick={() => setDeleteConfig({ id: cat.id, type: 'INCOME' })} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => handleOpenModal('INCOME', cat)} className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <Edit2 size={16} />
-                                        </button>
-                                        <button onClick={() => setDeleteConfig({ id: cat.id, type: 'INCOME' })} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                                            <Trash2 size={16} />
-                                        </button>
+                                ))}
+                                {incomeSources.length === 0 && (
+                                    <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                                        No income sources found.
                                     </div>
-                                </div>
-                            ))}
-                            {incomeSources.length === 0 && (
-                                <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
-                                    No income sources found.
-                                </div>
-                            )}
-                        </div>
-                        <Pagination
-                            currentPage={incPage}
-                            totalCount={totalIncCount}
-                            pageSize={PAGE_SIZE}
-                            onPageChange={setIncPage}
-                        />
-                    </section>
-                </div>
+                                )}
+                            </div>
+                            <Pagination
+                                currentPage={incPage}
+                                totalCount={totalIncCount}
+                                pageSize={PAGE_SIZE}
+                                onPageChange={setIncPage}
+                            />
+                        </section>
+                    </div>
+                )}
             </main>
 
             {/* Modal */}
