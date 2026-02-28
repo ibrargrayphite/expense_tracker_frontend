@@ -27,12 +27,12 @@ export default function LoansPage() {
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const PAGE_SIZE = 5;
+    const PAGE_SIZE = 10;
 
     // Filter & sort
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState<'ALL' | 'TAKEN' | 'LENT'>('ALL');
-    const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'CLOSED'>('ALL');
+    const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'CLOSED'>('ACTIVE');
     const [filterMinAmount, setFilterMinAmount] = useState('');
     const [filterMaxAmount, setFilterMaxAmount] = useState('');
     const [sortBy, setSortBy] = useState<'amount_desc' | 'amount_asc' | 'name_asc' | 'name_desc'>('amount_desc');
@@ -58,8 +58,8 @@ export default function LoansPage() {
                 status: filterStatus !== 'ALL' ? filterStatus : undefined,
                 min_amount: filterMinAmount || undefined,
                 max_amount: filterMaxAmount || undefined,
-                ordering: sortBy === 'amount_desc' ? '-amount' :
-                    sortBy === 'amount_asc' ? 'amount' :
+                ordering: sortBy === 'amount_desc' ? '-remaining_amount' :
+                    sortBy === 'amount_asc' ? 'remaining_amount' :
                         sortBy === 'name_asc' ? 'contact__first_name' :
                             sortBy === 'name_desc' ? '-contact__first_name' : '-created_at'
             };
@@ -170,7 +170,7 @@ export default function LoansPage() {
                             <h3 className="font-bold text-slate-800 dark:text-slate-100">Find Records</h3>
                         </div>
                         <div className="flex items-center gap-3">
-                            {(search || filterType !== 'ALL' || filterStatus !== 'ALL' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
+                            {(search || filterType !== 'ALL' || filterStatus !== 'ACTIVE' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
                                 <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
                                     Filters Active
                                 </span>
@@ -223,7 +223,6 @@ export default function LoansPage() {
                                     value={filterStatus}
                                     onChange={e => setFilterStatus(e.target.value as any)}
                                 >
-                                    <option value="ALL">All Status</option>
                                     <option value="ACTIVE">Active Only</option>
                                     <option value="CLOSED">Closed Only</option>
                                 </select>
@@ -269,10 +268,10 @@ export default function LoansPage() {
                                 Found {totalCount} matching records
                             </span>
                             <div className="flex items-center gap-3">
-                                {(search || filterType !== 'ALL' || filterStatus !== 'ALL' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
+                                {(search || filterType !== 'ALL' || filterStatus !== 'ACTIVE' || filterMinAmount || filterMaxAmount || sortBy !== 'amount_desc') && (
                                     <button
                                         onClick={() => {
-                                            setSearch(''); setFilterType('ALL'); setFilterStatus('ALL'); setFilterMinAmount(''); setFilterMaxAmount(''); setSortBy('amount_desc');
+                                            setSearch(''); setFilterType('ALL'); setFilterStatus('ACTIVE'); setFilterMinAmount(''); setFilterMaxAmount(''); setSortBy('amount_desc');
                                             setCurrentPage(1);
                                             setTriggerFetch(prev => prev + 1);
                                         }}
@@ -317,100 +316,98 @@ export default function LoansPage() {
                         </div>
                     </div>
                 ) : loans.length === 0 ? (
-                    <div className="text-center py-20 text-slate-400">
-                        No loans match your criteria.
+                    <div className="text-center py-40 flex flex-col items-center justify-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                            <Search size={32} />
+                        </div>
+                        <p className="text-slate-400 font-medium">No {filterStatus.toLowerCase()} records found match your criteria.</p>
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Active Loans */}
-                            <section className="space-y-4">
+                        {filterStatus !== 'CLOSED' && (
+                            <div className="space-y-6">
                                 <h2 className="text-xl font-bold flex items-center gap-2">
-                                    <span className="p-1 px-3 bg-red-500/10 text-red-500 text-xs rounded-full">Owed by me</span>
-                                    Loans Taken
+                                    <span className="p-1 px-3 bg-red-100 dark:bg-red-500/10 text-red-600 text-xs rounded-full">Active Records</span>                                Loans & Lents
                                 </h2>
-                                <div className="space-y-4">
-                                    {loans.filter((l: any) => l.type === 'TAKEN' && !l.is_closed).map((loan: any) => (
-                                        <div key={loan.id} className="card border-l-4 border-red-500">
-                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="font-bold text-lg truncate">{getDisplayName(loan)}</h3>
-                                                    <p className="text-sm text-secondary break-words whitespace-pre-wrap mt-1">{loan.description || 'No notes'}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {loans.filter((l: any) => !l.is_closed).map((loan: any) => (
+                                        <div key={loan.id} className={`card border-l-4 ${loan.type === 'TAKEN' ? 'border-red-500' : 'border-green-500'}`}>
+                                            <div className="flex flex-col gap-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${loan.type === 'TAKEN' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                                                {loan.type === 'TAKEN' ? 'LOAN TAKEN' : 'MONEY LENT'}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400 font-medium">
+                                                                {new Date(loan.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                                                            </span>
+                                                        </div>
+                                                        <h3 className="font-bold text-lg truncate">{getDisplayName(loan)}</h3>
+                                                        <p className="text-xs text-secondary mt-1 line-clamp-2">{loan.description || 'No notes'}</p>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-[10px] font-black text-secondary uppercase tracking-wider">Remaining</p>
+                                                        <p className={`text-xl font-black ${loan.type === 'TAKEN' ? 'text-red-500' : 'text-green-500'}`}>
+                                                            Rs. {parseFloat(loan.remaining_amount).toLocaleString()}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                                    <div className="text-left sm:text-left">
-                                                        <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
-                                                        <p className="text-xl font-bold text-red-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
+                                                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                                    <div className="text-[10px] text-slate-400 uppercase tracking-wide font-bold">
+                                                        Total: <span className="text-slate-600 dark:text-slate-300">Rs. {parseFloat(loan.total_amount).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button onClick={() => handleOpenModal(loan)} className="p-1.5 text-slate-400 hover:text-primary transition-colors">
+                                                            <Edit3 size={16} />
+                                                        </button>
+                                                        <button onClick={() => setConfirmDelete(loan.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
+                                                            <Trash2 size={16} />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
-                                                <span className="text-xs text-secondary">Total: Rs. {parseFloat(loan.total_amount).toLocaleString()}</span>
-                                            </div>
                                         </div>
                                     ))}
-                                    {loans.filter((l: any) => l.type === 'TAKEN' && !l.is_closed).length === 0 && (
-                                        <div className="p-8 text-center bg-slate-100 dark:bg-slate-800/50 rounded-2xl text-secondary text-sm">No active loans.</div>
-                                    )}
-                                </div>
-                            </section>
-
-                            {/* Money Lent */}
-                            <section className="space-y-4">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                    <span className="p-1 px-3 bg-green-500/10 text-green-500 text-xs rounded-full">Owed to me</span>
-                                    Money Lent
-                                </h2>
-                                <div className="space-y-4">
-                                    {loans.filter((l: any) => l.type === 'LENT' && !l.is_closed).map((loan: any) => (
-                                        <div key={loan.id} className="card border-l-4 border-green-500">
-                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="font-bold text-lg truncate">{getDisplayName(loan)}</h3>
-                                                    <p className="text-sm text-secondary break-words whitespace-pre-wrap mt-1">{loan.description || 'No notes'}</p>
-                                                </div>
-                                                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                                    <div className="text-left sm:text-left">
-                                                        <p className="text-xs font-bold text-secondary uppercase">Remaining</p>
-                                                        <p className="text-xl font-bold text-green-500">Rs. {parseFloat(loan.remaining_amount).toLocaleString()}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
-                                                <span className="text-xs text-secondary">Total: Rs. {parseFloat(loan.total_amount).toLocaleString()}</span>
-                                            </div>
+                                    {loans.filter((l: any) => !l.is_closed).length === 0 && (
+                                        <div className="col-span-full p-12 text-center bg-slate-100 dark:bg-slate-800/50 rounded-3xl text-secondary text-sm border-2 border-dashed border-slate-200 dark:border-slate-700">
+                                            No active records found.
                                         </div>
-                                    ))}
-                                    {loans.filter((l: any) => l.type === 'LENT' && !l.is_closed).length === 0 && (
-                                        <div className="p-8 text-center bg-slate-100 dark:bg-slate-800/50 rounded-2xl text-secondary text-sm">No pending collections.</div>
                                     )}
                                 </div>
-                            </section>
-                        </div>
+                            </div>
+                        )}
 
                         {/* Closed Records */}
-                        <section className="space-y-4 mt-12 opacity-60 grayscale hover:grayscale-0 transition-all">
-                            <h2 className="text-xl font-bold">Closed Records</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                {loans.filter((l: any) => l.is_closed).map((loan: any) => (
-                                    <div key={loan.id} className="card flex items-center justify-between p-4 bg-slate-50 relative group">
-                                        <div className="flex items-center gap-3">
-                                            <CheckCircle2 className="text-green-500" size={20} />
-                                            <div>
-                                                <p className="font-bold text-sm">{getDisplayName(loan)}</p>
-                                                <p className="text-xs text-secondary">{loan.type === 'TAKEN' ? 'Paid Back' : 'Reimbursed'}</p>
+                        {filterStatus !== 'ACTIVE' && (
+                            <section className={`space-y-4 ${filterStatus === 'ALL' ? 'mt-12 opacity-60 grayscale hover:grayscale-0 transition-all' : ''}`}>
+                                <h2 className="text-xl font-bold">Closed Records</h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    {loans.filter((l: any) => l.is_closed).map((loan: any) => (
+                                        <div key={loan.id} className="card flex items-center justify-between p-4 bg-slate-50 relative group">
+                                            <div className="flex items-center gap-3">
+                                                <CheckCircle2 className="text-green-500" size={20} />
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-sm">{getDisplayName(loan)}</p>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {new Date(loan.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-secondary">{loan.type === 'TAKEN' ? 'Paid Back (Taken)' : 'Reimbursed (Lent)'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-sm">Rs. {parseFloat(loan.total_amount).toLocaleString()}</p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-sm">Rs. {parseFloat(loan.total_amount).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                                {loans.filter((l: any) => l.is_closed).length === 0 && (
-                                    <div className="p-8 text-center bg-slate-100 dark:bg-slate-800/50 rounded-2xl text-secondary text-sm md:col-span-3">No closed records.</div>
-                                )}
-                            </div>
-                        </section>
+                                    ))}
+                                    {loans.filter((l: any) => l.is_closed).length === 0 && (
+                                        <div className="p-8 text-center bg-slate-100 dark:bg-slate-800/50 rounded-2xl text-secondary text-sm md:col-span-3">No closed records.</div>
+                                    )}
+                                </div>
+                            </section>
+                        )}
                     </>
                 )}
 

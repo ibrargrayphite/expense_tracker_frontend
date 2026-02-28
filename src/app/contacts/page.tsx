@@ -91,8 +91,8 @@ export default function ContactsPage() {
 
     // Filter & sort
     const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'accounts_asc' | 'accounts_desc'>('name_asc');
-    const [filterAccountCount, setFilterAccountCount] = useState<'ALL' | 'HAS_ACCOUNTS' | 'NO_ACCOUNTS'>('ALL');
+    const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc'>('name_asc');
+    const [filterNetBalance, setFilterNetBalance] = useState<'ALL' | 'POSITIVE' | 'NEGATIVE' | 'SETTLED'>('ALL');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [triggerFetch, setTriggerFetch] = useState(0);
     const [isFetching, setIsFetching] = useState(true);
@@ -108,11 +108,9 @@ export default function ContactsPage() {
             const params: any = {
                 page: currentPage,
                 search: search || undefined,
-                accounts: filterAccountCount !== 'ALL' ? filterAccountCount : undefined,
+                net_balance: filterNetBalance !== 'ALL' ? filterNetBalance : undefined,
                 ordering: sortBy === 'name_asc' ? 'first_name' :
-                    sortBy === 'name_desc' ? '-first_name' :
-                        sortBy === 'accounts_asc' ? 'accounts_count' :
-                            sortBy === 'accounts_desc' ? '-accounts_count' : 'first_name'
+                    sortBy === 'name_desc' ? '-first_name' : 'first_name'
             };
             const res = await api.get('contacts/', { params });
             // DRF returns { results: [], count: n } when paginated
@@ -249,7 +247,7 @@ export default function ContactsPage() {
                             <h3 className="font-bold text-slate-800 dark:text-slate-100">Find Contacts</h3>
                         </div>
                         <div className="flex items-center gap-3">
-                            {(search || filterAccountCount !== 'ALL' || sortBy !== 'name_asc') && (
+                            {(search || filterNetBalance !== 'ALL' || sortBy !== 'name_asc') && (
                                 <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
                                     Filters Active
                                 </span>
@@ -291,21 +289,20 @@ export default function ContactsPage() {
                                 >
                                     <option value="name_asc">🔤 Name A→Z</option>
                                     <option value="name_desc">🔤 Name Z→A</option>
-                                    <option value="accounts_asc">📇 Accounts (Low→High)</option>
-                                    <option value="accounts_desc">📇 Accounts (High→Low)</option>
                                 </select>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Account Visibility</label>
+                                <label className="text-xs font-bold text-secondary uppercase tracking-wider">Net Balance</label>
                                 <select
                                     className="input-field h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                                    value={filterAccountCount}
-                                    onChange={e => setFilterAccountCount(e.target.value as any)}
+                                    value={filterNetBalance}
+                                    onChange={e => setFilterNetBalance(e.target.value as any)}
                                 >
                                     <option value="ALL">All Contacts</option>
-                                    <option value="HAS_ACCOUNTS">Has Linked Accounts</option>
-                                    <option value="NO_ACCOUNTS">No Linked Accounts</option>
+                                    <option value="POSITIVE">Positive (They owe me)</option>
+                                    <option value="NEGATIVE">Negative (I owe them)</option>
+                                    <option value="SETTLED">Settled (Zero Balance)</option>
                                 </select>
                             </div>
                         </div>
@@ -313,10 +310,10 @@ export default function ContactsPage() {
                         <div className="flex items-center justify-between text-xs text-secondary mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
                             <span>Found {totalCount} contacts matching criteria</span>
                             <div className="flex items-center gap-3">
-                                {(search || filterAccountCount !== 'ALL' || sortBy !== 'name_asc') && (
+                                {(search || filterNetBalance !== 'ALL' || sortBy !== 'name_asc') && (
                                     <button
                                         onClick={() => {
-                                            setSearch(''); setFilterAccountCount('ALL'); setSortBy('name_asc');
+                                            setSearch(''); setFilterNetBalance('ALL'); setSortBy('name_asc');
                                             setCurrentPage(1);
                                             setTriggerFetch(prev => prev + 1);
                                         }}
