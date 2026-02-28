@@ -308,20 +308,17 @@ export default function TransactionsPage() {
                     }];
                 }
 
+                // Always POST as JSON so nested accounts/splits are parsed correctly
+                payload.accounts = accountsPayload;
+                const response = await api.post('transactions/', payload);
+
+                // If an image was selected, upload it separately as multipart
                 if (image) {
                     const formData = new FormData();
-                    formData.append('date', payload.date);
-                    if (payload.contact) formData.append('contact', payload.contact);
-                    if (payload.contact_account) formData.append('contact_account', payload.contact_account);
                     formData.append('image', image);
-                    formData.append('accounts', JSON.stringify(accountsPayload));
-
-                    await api.post('transactions/', formData, {
+                    await api.patch(`transactions/${response.data.id}/upload_image/`, formData, {
                         headers: { 'Content-Type': 'multipart/form-data' }
                     });
-                } else {
-                    payload.accounts = accountsPayload;
-                    await api.post('transactions/', payload);
                 }
             }
 
