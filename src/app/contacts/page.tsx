@@ -540,41 +540,50 @@ export default function ContactsPage() {
                                             );
                                         })()}
 
-                                        {/* Transactions Section */}
-                                        <div>
-                                            <h4 className="font-bold flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 mb-3">
-                                                <HistoryIcon size={14} className="text-blue-500" /> Recent Activity
-                                            </h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                                                {contact.transactions && contact.transactions.length > 0 ? (
-                                                    contact.transactions.slice(0, 5).map((t) => {
-                                                        const mainSplit = t.accounts[0]?.splits[0];
-                                                        const type = mainSplit?.type || 'EXPENSE';
-                                                        const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(type);
-                                                        return (
-                                                            <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
-                                                                <div className="flex items-center gap-3 min-w-0">
-                                                                    <div className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-bold ${isIncome ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10' : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10'}`}>
-                                                                        {type === 'INCOME' ? 'IN' : type === 'EXPENSE' ? 'EX' : type === 'LOAN_TAKEN' ? 'LT' : type === 'MONEY_LENT' ? 'ML' : type === 'REPAYMENT' ? 'RP' : 'RB'}
+                                        {/* Transaction Activity Section */}
+                                        <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 -mx-6 -mb-6 mt-6">
+                                            <div className="p-4 space-y-3">
+                                                <div className="flex items-center justify-between px-2">
+                                                    <h4 className="text-[10px] font-black text-secondary uppercase tracking-widest">Recent Activity (Last 5)</h4>
+                                                    <button onClick={() => router.push('/transactions')} className="text-[10px] font-bold text-primary hover:underline">View All History</button>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    {contact.transactions && contact.transactions.length > 0 ? (
+                                                        contact.transactions.map((tx) => {
+                                                            const isOutgoing = tx.accounts?.some(ta => ta.splits.some(s => ['EXPENSE', 'MONEY_LENT', 'LOAN_REPAYMENT'].includes(s.type)));
+                                                            const transactionType = tx.accounts?.[0]?.splits?.[0]?.type?.replace('_', ' ') || 'Record';
+
+                                                            return (
+                                                                <div key={tx.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-white dark:hover:bg-slate-800 transition-colors group">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`p-2 rounded-xl ${isOutgoing ? 'bg-red-50/50 text-red-600' : 'bg-green-50/50 text-green-600'}`}>
+                                                                            {isOutgoing ? <Trash2 size={14} className="rotate-45" /> : <Plus size={14} />}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 italic truncate max-w-[150px]">
+                                                                                    {tx.note || 'Untitled Record'}
+                                                                                </p>
+                                                                                <span className="text-[10px] text-slate-400 font-medium">
+                                                                                    {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-[10px] text-secondary font-medium">{transactionType}</p>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="text-[13px] font-bold truncate">{t.note || type.replace('_', ' ')}</p>
-                                                                        <p className="text-[9px] text-secondary font-medium">
-                                                                            {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
-                                                                        </p>
-                                                                    </div>
+                                                                    <p className={`text-sm font-black ${isOutgoing ? 'text-red-500' : 'text-green-500'}`}>
+                                                                        {isOutgoing ? '-' : '+'}Rs. {parseFloat(tx.total_amount?.toString() || '0').toLocaleString()}
+                                                                    </p>
                                                                 </div>
-                                                                <p className={`text-[13px] font-black shrink-0 ml-2 ${isIncome ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                    {isIncome ? '+' : '-'} Rs. {parseFloat(t.total_amount).toLocaleString()}
-                                                                </p>
-                                                            </div>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <div className="col-span-full text-center py-4 text-[11px] text-secondary italic opacity-60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                                                        No activity history.
-                                                    </div>
-                                                )}
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="py-8 text-center bg-white/50 dark:bg-slate-800/50 rounded-2xl">
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">No recent history for this contact</p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -37,10 +37,14 @@ const BANK_COLORS: Record<string, { bg: string; text: string }> = {
 
 interface Transaction {
     id: number;
-    amount: string;
-    type: 'INCOME' | 'EXPENSE' | 'LOAN_TAKEN' | 'MONEY_LENT' | 'REPAYMENT' | 'REIMBURSEMENT';
+    total_amount: string | number;
     note: string;
     date: string;
+    type?: string;
+    is_internal?: boolean;
+    from_account_name?: string;
+    to_account_name?: string;
+    accounts?: { account: number; splits: { type: string; amount: string | number; note?: string }[] }[];
 }
 
 interface Account {
@@ -50,7 +54,7 @@ interface Account {
     account_number: string;
     iban: string;
     balance: string;
-    transactions: Transaction[];
+    recent_transactions: Transaction[];
 }
 
 export default function AccountsPage() {
@@ -343,21 +347,29 @@ export default function AccountsPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold truncate">{acc.account_name}</h3>
-                                            {acc.bank_name !== 'Cash' && (
+                                            {acc.bank_name !== 'CASH' ? (
                                                 <p className="text-sm text-secondary">
                                                     {acc.bank_name}
                                                     {acc.account_number ? ` - ${acc.account_number}` : ''}
                                                     {acc.iban ? ` (IBAN: ${acc.iban})` : ''}
                                                 </p>
+                                            ) : (
+                                                <p className="text-sm text-secondary">Physical Cash & Wallets</p>
                                             )}
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
-                                        <div className="text-left sm:text-left">
-                                            <p className="text-sm text-secondary font-medium">Balance</p>
-                                            <p className="text-lg sm:text-xl font-bold text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
+                                        <div className="text-left sm:text-right">
+                                            <p className="text-xs text-secondary font-bold uppercase tracking-wider">Current Balance</p>
+                                            <p className="text-2xl font-black text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                onClick={() => toggleExpand(acc.id)}
+                                                className={`p-2 rounded-xl transition-all ${expandedAccounts[acc.id] ? 'bg-primary text-white' : 'text-slate-400 hover:text-primary hover:bg-primary/5'}`}
+                                            >
+                                                <HistoryIcon size={20} />
+                                            </button>
                                             {acc.bank_name !== 'CASH' && (
                                                 <>
                                                     <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
@@ -371,6 +383,59 @@ export default function AccountsPage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Transaction Dropdown (Recent 5) */}
+                                {expandedAccounts[acc.id] && (
+                                    <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 animate-slide-down">
+                                        <div className="p-4 space-y-3">
+                                            <div className="flex items-center justify-between px-2">
+                                                <h4 className="text-[10px] font-black text-secondary uppercase tracking-widest">Recent Activity (Last 5)</h4>
+                                                <button onClick={() => router.push('/transactions')} className="text-[10px] font-bold text-primary hover:underline">View All History</button>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                {acc.recent_transactions && acc.recent_transactions.length > 0 ? (
+                                                    acc.recent_transactions.map((tx) => {
+                                                        const isTransfer = tx.is_internal;
+                                                        const isOutgoing = isTransfer ? tx.from_account_name === acc.account_name :
+                                                            tx.accounts?.some(ta => ta.account === acc.id && ta.splits.some(s => ['EXPENSE', 'MONEY_LENT', 'LOAN_REPAYMENT'].includes(s.type)));
+
+                                                        const accountEntry = tx.accounts?.find(ta => ta.account === acc.id);
+                                                        const transactionType = isTransfer ? 'Internal Transfer' : (accountEntry?.splits?.[0]?.type?.replace('_', ' ') || 'Record');
+
+                                                        return (
+                                                            <div key={tx.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-white dark:hover:bg-slate-800 transition-colors group">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`p-2 rounded-xl ${isTransfer ? 'bg-blue-100/50 text-blue-600' : isOutgoing ? 'bg-red-50/50 text-red-600' : 'bg-green-50/50 text-green-600'}`}>
+                                                                        {isTransfer ? <ArrowUpDown size={14} /> : isOutgoing ? <Trash2 size={14} className="rotate-45" /> : <Plus size={14} />}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                                                                                {isTransfer ? (tx.from_account_name === acc.account_name ? `Transfer to ${tx.to_account_name}` : `Transfer from ${tx.from_account_name}`) : (tx.note || 'Untitled Record')}
+                                                                            </p>
+                                                                            <span className="text-[10px] text-slate-400 font-medium">
+                                                                                {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                                                                            </span>
+                                                                        </div>
+                                                                        <p className="text-[10px] text-secondary font-medium">{transactionType}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <p className={`text-sm font-black ${isTransfer ? 'text-blue-500' : isOutgoing ? 'text-red-500' : 'text-green-500'}`}>
+                                                                    {isOutgoing ? '-' : '+'}Rs. {parseFloat(tx.total_amount?.toString() || '0').toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="py-8 text-center bg-white/50 dark:bg-slate-800/50 rounded-2xl">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">No recent history for this account</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))
                     )}
@@ -381,74 +446,76 @@ export default function AccountsPage() {
                     pageSize={PAGE_SIZE}
                     onPageChange={setCurrentPage}
                 />
-            </main>
+            </main >
 
             {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="card w-full max-w-md animate-fade-in max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2">
-                            <h2 className="text-2xl font-bold">{editingAccount ? 'Edit Account' : 'New Account'}</h2>
-                            <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Bank / Platform</label>
-                                <select
-                                    className="input-field"
-                                    value={form.bank_name}
-                                    onChange={e => setForm({ ...form, bank_name: e.target.value })}
+            {
+                isModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <div className="card w-full max-w-md animate-fade-in max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2">
+                                <h2 className="text-2xl font-bold">{editingAccount ? 'Edit Account' : 'New Account'}</h2>
+                                <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Bank / Platform</label>
+                                    <select
+                                        className="input-field"
+                                        value={form.bank_name}
+                                        onChange={e => setForm({ ...form, bank_name: e.target.value })}
+                                    >
+                                        {BANK_OPTIONS.filter(opt => opt !== 'Cash').map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Account Name (e.g. Personal, Work)</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder={form.bank_name === 'Cash' ? 'Main Wallet' : 'My JazzCash'}
+                                        value={form.account_name}
+                                        onChange={e => setForm({ ...form, account_name: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                {form.bank_name !== 'Cash' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Account Number</label>
+                                            <input
+                                                type="text"
+                                                className="input-field"
+                                                placeholder="0300..."
+                                                value={form.account_number}
+                                                onChange={e => setForm({ ...form, account_number: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">IBAN (Optional)</label>
+                                            <input
+                                                type="text"
+                                                className="input-field"
+                                                placeholder="PK..."
+                                                value={form.iban}
+                                                onChange={e => setForm({ ...form, iban: e.target.value })}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!form.account_name || (form.bank_name !== 'Cash' && !form.account_number)}
                                 >
-                                    {BANK_OPTIONS.filter(opt => opt !== 'Cash').map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Account Name (e.g. Personal, Work)</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    placeholder={form.bank_name === 'Cash' ? 'Main Wallet' : 'My JazzCash'}
-                                    value={form.account_name}
-                                    onChange={e => setForm({ ...form, account_name: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            {form.bank_name !== 'Cash' && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Account Number</label>
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="0300..."
-                                            value={form.account_number}
-                                            onChange={e => setForm({ ...form, account_number: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">IBAN (Optional)</label>
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="PK..."
-                                            value={form.iban}
-                                            onChange={e => setForm({ ...form, iban: e.target.value })}
-                                        />
-                                    </div>
-                                </>
-                            )}
-                            <button
-                                type="submit"
-                                className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={!form.account_name || (form.bank_name !== 'Cash' && !form.account_number)}
-                            >
-                                {editingAccount ? 'Update Account' : 'Save Account'}
-                            </button>
-                        </form>
+                                    {editingAccount ? 'Update Account' : 'Save Account'}
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
             <ConfirmModal
                 isOpen={confirmDelete !== null}
                 title="Delete Account"
@@ -458,6 +525,6 @@ export default function AccountsPage() {
                 onConfirm={() => { if (confirmDelete !== null) deleteAccount(confirmDelete); }}
                 onCancel={() => setConfirmDelete(null)}
             />
-        </div>
+        </div >
     );
 }
