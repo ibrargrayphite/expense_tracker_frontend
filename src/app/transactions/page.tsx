@@ -204,7 +204,7 @@ export default function TransactionsPage() {
             };
 
             const [historyRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes] = await Promise.all([
-                api.get('transactions/history/', { params }),
+                api.get('transactions/', { params }),
                 api.get('accounts/'),
                 api.get('loans/'),
                 api.get('contacts/'),

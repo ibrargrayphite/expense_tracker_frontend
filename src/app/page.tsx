@@ -106,9 +106,9 @@ export default function Dashboard() {
         api.get('transactions/'),
       ]);
       setData({
-        accounts: accountsRes.data,
-        loans: loansRes.data,
-        transactions: transactionsRes.data,
+        accounts: accountsRes.data.results ?? accountsRes.data,
+        loans: loansRes.data.results ?? loansRes.data,
+        transactions: transactionsRes.data.results ?? transactionsRes.data,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
