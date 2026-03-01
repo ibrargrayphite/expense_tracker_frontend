@@ -18,7 +18,8 @@ import {
   Calendar,
   Search,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  CalendarClock
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { getErrorMessage } from '@/lib/error-handler';
@@ -72,10 +73,14 @@ export default function Dashboard() {
     accounts: Account[];
     loans: Loan[];
     transactions: Transaction[];
+    plannedExpenseTotal: number;
+    plannedExpenseCount: number;
   }>({
     accounts: [],
     loans: [],
     transactions: [],
+    plannedExpenseTotal: 0,
+    plannedExpenseCount: 0,
   });
   const [fetching, setFetching] = useState(true);
 
@@ -99,15 +104,19 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [accountsRes, loansRes, transactionsRes] = await Promise.all([
+      const [accountsRes, loansRes, transactionsRes, plannedRes] = await Promise.all([
         api.get('accounts/'),
         api.get('loans/'),
         api.get('transactions/'),
+        api.get('planned-expenses/dropdown/'),
       ]);
+      const plannedList: { amount: string }[] = plannedRes.data.results ?? plannedRes.data;
       setData({
         accounts: accountsRes.data.results ?? accountsRes.data,
         loans: loansRes.data.results ?? loansRes.data,
         transactions: transactionsRes.data.results ?? transactionsRes.data,
+        plannedExpenseTotal: plannedList.reduce((s, p) => s + parseFloat(p.amount), 0),
+        plannedExpenseCount: plannedList.length,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -282,7 +291,7 @@ export default function Dashboard() {
         ) : (
           <>
             {/* Top Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 md:gap-6">
               <div className="card">
                 <div className="flex justify-between items-start mb-4">
                   <span className="opacity-80 font-medium text-sm md:text-base">Total Balance</span>
@@ -328,6 +337,22 @@ export default function Dashboard() {
                 </div>
                 <div className="mt-4 text-xs font-semibold text-secondary uppercase tracking-wider">Last 30 days</div>
               </div>
+
+              {/* Planned Expenses Card */}
+              <a href="/planned-expenses" className="card block hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-secondary font-medium text-sm md:text-base">Planned Expenses</span>
+                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 shrink-0">
+                    <CalendarClock size={20} />
+                  </div>
+                </div>
+                <div className="text-2xl md:text-3xl font-bold break-all text-amber-600">
+                  Rs. {data.plannedExpenseTotal.toLocaleString()}
+                </div>
+                <div className="mt-4 text-xs font-semibold text-amber-500 uppercase tracking-wider">
+                  {data.plannedExpenseCount} pending plan{data.plannedExpenseCount !== 1 ? 's' : ''}
+                </div>
+              </a>
             </div>
 
             {/* Charts Section */}
