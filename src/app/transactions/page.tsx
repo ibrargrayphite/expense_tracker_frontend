@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
-import { Plus, X, Search, Filter, Image as ImageIcon, Trash2, Download, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Handshake, WalletCards, Edit3 } from 'lucide-react';
+import { Plus, X, Search, Filter, Image as ImageIcon, Trash2, Download, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Handshake, WalletCards, Edit3, CalendarClock, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -117,6 +117,17 @@ export default function TransactionsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const { showToast } = useToast();
+    interface PlannedExpenseOption {
+        id: number;
+        amount: string;
+        start_date: string;
+        end_date: string;
+        category: number | null;
+        category_name: string | null;
+        note: string | null;
+        is_completed: boolean;
+    }
+
     const [data, setData] = useState<{
         transactions: any[];
         internalTransactions: any[];
@@ -126,6 +137,7 @@ export default function TransactionsPage() {
         expenseCategories: Category[];
         incomeSources: Category[];
         contactAccounts: ContactAccount[];
+        plannedExpenses: PlannedExpenseOption[];
     }>({
         transactions: [],
         internalTransactions: [],
@@ -134,7 +146,8 @@ export default function TransactionsPage() {
         contacts: [],
         expenseCategories: [],
         incomeSources: [],
-        contactAccounts: []
+        contactAccounts: [],
+        plannedExpenses: [],
     });
 
     // Filter & sort state
@@ -193,6 +206,10 @@ export default function TransactionsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Planned expense link
+    const [usePlanned, setUsePlanned] = useState(false);
+    const [selectedPlanned, setSelectedPlanned] = useState('');
+
     useEffect(() => {
         if (!loading && !user) router.push('/login');
         if (user) fetchData();
@@ -218,7 +235,7 @@ export default function TransactionsPage() {
                             sortBy === 'amount_asc' ? 'amount' : '-date'
             };
 
-            const [historyRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes] = await Promise.all([
+            const [historyRes, accRes, loanRes, contactRes, expCatRes, incSrcRes, contactAccRes, plannedRes] = await Promise.all([
                 api.get('transactions/', { params }),
                 api.get('accounts/dropdown/'),
                 api.get('loans/dropdown/'),
@@ -226,6 +243,7 @@ export default function TransactionsPage() {
                 api.get('expense-categories/dropdown/'),
                 api.get('income-sources/dropdown/'),
                 api.get('contact-accounts/dropdown/'),
+                api.get('planned-expenses/dropdown/'),
             ]);
 
             setData({
@@ -237,6 +255,7 @@ export default function TransactionsPage() {
                 expenseCategories: expCatRes.data.results || expCatRes.data,
                 incomeSources: incSrcRes.data.results || incSrcRes.data,
                 contactAccounts: contactAccRes.data.results || contactAccRes.data,
+                plannedExpenses: plannedRes.data.results || plannedRes.data,
             });
             setTotalCount(historyRes.data.count);
 
@@ -324,6 +343,24 @@ export default function TransactionsPage() {
                 }
             }
 
+            // If a planned expense was linked, mark it as completed
+            if (usePlanned && selectedPlanned) {
+                const pe = data.plannedExpenses.find(p => p.id.toString() === selectedPlanned);
+                try {
+                    await api.patch(`planned-expenses/${selectedPlanned}/`, {
+                        amount: pe?.amount,
+                        start_date: pe?.start_date,
+                        end_date: pe?.end_date,
+                        category: pe?.category ?? null,
+                        note: pe?.note ?? null,
+                        is_completed: true,
+                    });
+                } catch (e) {
+                    console.warn('Failed to update planned expense status', e);
+                    showToast('Transaction saved, but could not mark planned expense as complete.', 'error');
+                }
+            }
+
             showToast('Success!', 'success');
             setIsModalOpen(false);
             fetchData();
@@ -344,6 +381,8 @@ export default function TransactionsPage() {
             setIsSplitEnabled(false);
             setSplits([]);
             setImage(null);
+            setUsePlanned(false);
+            setSelectedPlanned('');
         } catch (err: any) {
             console.error(err);
             showToast(getErrorMessage(err), 'error');
@@ -778,6 +817,7 @@ export default function TransactionsPage() {
                                                 const val = e.target.value;
                                                 setForm(prev => ({ ...prev, type: val, contact: '', contact_account: '', loan: '', expense_category: '', income_source: '' }));
                                                 if (val === 'TRANSFER') setIsSplitEnabled(false);
+                                                if (val !== 'EXPENSE') { setUsePlanned(false); setSelectedPlanned(''); }
                                             }}
                                             disabled={modalMode === 'TRANSFER'}
                                         >
@@ -908,7 +948,7 @@ export default function TransactionsPage() {
                                                     >
                                                         <option value="">-- Select Account --</option>
                                                         {data.contactAccounts.filter(acc => acc.contact.toString() === form.contact).map((acc: any) => (
-                                                            <option key={acc.id} value={acc.id}>{acc.account_name} - {acc.account_number}</option>
+                                                            <option key={acc.id} value={acc.id}>{acc.bank_name} - {acc.account_number}</option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -933,6 +973,69 @@ export default function TransactionsPage() {
                                             </>
                                         )}
                                     </div>
+
+                                    {/* Planned Expense Link — only visible for EXPENSE type non-split */}
+                                    {form.type === 'EXPENSE' && !isSplitEnabled && data.plannedExpenses.length > 0 && (
+                                        <div className={`p-4 rounded-2xl border transition-all duration-200 ${usePlanned ? 'bg-primary/5 border-primary/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700'}`}>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2">
+                                                    <CalendarClock size={16} className={usePlanned ? 'text-primary' : 'text-slate-400'} />
+                                                    <span className="text-sm font-bold">Link to Planned Expense</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    id="toggle-use-planned"
+                                                    onClick={() => {
+                                                        const next = !usePlanned;
+                                                        setUsePlanned(next);
+                                                        if (!next) {
+                                                            setSelectedPlanned('');
+                                                        }
+                                                    }}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${usePlanned ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                                >
+                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${usePlanned ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+                                            {usePlanned && (
+                                                <div className="space-y-3 animate-in fade-in duration-200">
+                                                    <select
+                                                        id="select-planned-expense"
+                                                        className="input-field py-3"
+                                                        value={selectedPlanned}
+                                                        onChange={e => {
+                                                            const id = e.target.value;
+                                                            setSelectedPlanned(id);
+                                                            if (id) {
+                                                                const pe = data.plannedExpenses.find(p => p.id.toString() === id);
+                                                                if (pe) {
+                                                                    setForm(prev => ({
+                                                                        ...prev,
+                                                                        amount: pe.amount,
+                                                                        expense_category: pe.category?.toString() || prev.expense_category,
+                                                                        note: pe.note || prev.note,
+                                                                    }));
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <option value="">-- Select a planned expense --</option>
+                                                        {data.plannedExpenses.map(pe => (
+                                                            <option key={pe.id} value={pe.id}>
+                                                                Rs. {parseFloat(pe.amount).toLocaleString()} {pe.category_name ? `(${pe.category_name})` : ''} — Due {pe.end_date}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {selectedPlanned && (
+                                                        <div className="flex items-center gap-2 text-xs text-primary font-semibold">
+                                                            <CheckCircle2 size={14} />
+                                                            This planned expense will be marked as completed on submit.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="p-8 bg-slate-900 dark:bg-slate-950 rounded-[40px] text-white overflow-hidden relative group/split-active border-4 border-slate-100 dark:border-slate-800 shadow-xl animate-in zoom-in duration-300">

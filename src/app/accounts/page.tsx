@@ -20,6 +20,7 @@ const BANK_OPTIONS = [
     'Bank Alfalah',
     'Meezan Bank',
     'HBL',
+    'Standard Chartered'
 ];
 
 // Define background and text colors for each bank

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, Wallet, HandCoins, BookUser, History, LogOut, Menu, X, Tags, ChevronDown, Pencil } from 'lucide-react';
+import { LayoutDashboard, Wallet, HandCoins, BookUser, History, LogOut, Menu, X, Tags, ChevronDown, Pencil, CalendarClock } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
 const NAV_LINKS = [
@@ -13,6 +13,7 @@ const NAV_LINKS = [
     { href: '/contacts', label: 'Contacts', icon: BookUser },
     { href: '/categories', label: 'Categories', icon: Tags },
     { href: '/transactions', label: 'History', icon: History },
+    { href: '/planned-expenses', label: 'Planned', icon: CalendarClock },
 ];
 
 export default function Navbar() {

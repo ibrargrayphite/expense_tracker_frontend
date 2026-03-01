@@ -19,6 +19,7 @@ const BANK_OPTIONS = [
     'Bank Alfalah',
     'Meezan Bank',
     'HBL',
+    'Standard Chartered'
 ];
 
 interface ContactAccount {
