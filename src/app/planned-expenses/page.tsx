@@ -145,8 +145,8 @@ export default function PlannedExpensesPage() {
         setEditTarget(item);
         setForm({
             amount: item.amount,
-            start_date: item.start_date,
-            end_date: item.end_date,
+            start_date: item.start_date.slice(0, 16),
+            end_date: item.end_date.slice(0, 16),
             category: item.category?.toString() || '',
             note: item.note || '',
             is_completed: item.is_completed,
@@ -221,10 +221,9 @@ export default function PlannedExpensesPage() {
 
     const getItemStatus = (item: PlannedExpense): 'completed' | 'overdue' | 'pending' => {
         if (item.is_completed) return 'completed';
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const now = new Date();
         const end = parseISO(item.end_date);
-        if (end < today) return 'overdue';
+        if (end < now) return 'overdue';
         return 'pending';
     };
 
@@ -463,7 +462,7 @@ export default function PlannedExpensesPage() {
                                         {/* Dates */}
                                         <div className="flex items-center gap-2 text-xs text-secondary mt-auto pt-3 border-t border-slate-100 dark:border-slate-800">
                                             <CalendarClock size={12} />
-                                            <span>{format(parseISO(item.start_date), 'MMM dd')} – {format(parseISO(item.end_date), 'MMM dd, yyyy')}</span>
+                                            <span>{format(parseISO(item.start_date), 'MMM dd, HH:mm')} – {format(parseISO(item.end_date), 'MMM dd, yyyy HH:mm')}</span>
                                         </div>
 
                                         {/* Updated at */}
@@ -534,7 +533,7 @@ export default function PlannedExpensesPage() {
                                     <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">Start Date *</label>
                                     <input
                                         id="planned-start-date"
-                                        type="date"
+                                        type="datetime-local"
                                         required
                                         className="input-field py-3"
                                         value={form.start_date}
@@ -545,9 +544,8 @@ export default function PlannedExpensesPage() {
                                     <label className="text-xs font-bold uppercase text-slate-400 mb-2 block">End Date *</label>
                                     <input
                                         id="planned-end-date"
-                                        type="date"
+                                        type="datetime-local"
                                         required
-                                        min={form.start_date || undefined}
                                         className="input-field py-3"
                                         value={form.end_date}
                                         onChange={e => setForm({ ...form, end_date: e.target.value })}
