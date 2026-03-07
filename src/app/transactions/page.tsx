@@ -203,6 +203,7 @@ export default function TransactionsPage() {
     const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
     const [downloadStartDate, setDownloadStartDate] = useState('');
     const [downloadEndDate, setDownloadEndDate] = useState('');
+    const [downloadedBytes, setDownloadedBytes] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -393,29 +394,53 @@ export default function TransactionsPage() {
 
     const handleDownloadExcel = async () => {
         setIsDownloading(true);
+        setDownloadedBytes(0);
         try {
-            const params: any = {};
-            if (downloadStartDate) params.start_date = downloadStartDate;
-            if (downloadEndDate) params.end_date = downloadEndDate;
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/';
+            const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 
-            const response = await api.get('transactions/export_excel/', {
-                params,
-                responseType: 'blob'
+            const queryParams = new URLSearchParams();
+            if (downloadStartDate) queryParams.set('start_date', downloadStartDate);
+            if (downloadEndDate) queryParams.set('end_date', downloadEndDate);
+            const qs = queryParams.toString();
+
+            const res = await fetch(`${API_URL}transactions/export_excel/${qs ? `?${qs}` : ''}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
 
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            if (!res.ok) throw new Error(`Server error: ${res.status}`);
+            if (!res.body) throw new Error('ReadableStream not supported');
+
+            const reader = res.body.getReader();
+            const chunks: Uint8Array[] = [];
+            let received = 0;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                received += value.length;
+                setDownloadedBytes(received);
+            }
+
+            const blob = new Blob(chunks as BlobPart[], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', `transactions_${format(new Date(), 'yyyyMMdd')}.xlsx`);
             document.body.appendChild(link);
             link.click();
             link.remove();
+            window.URL.revokeObjectURL(url);
             setIsDownloadModalOpen(false);
         } catch (err) {
             console.error(err);
             showToast('Failed to download Excel', 'error');
         } finally {
             setIsDownloading(false);
+            setDownloadedBytes(0);
         }
     };
 
@@ -1367,10 +1392,26 @@ export default function TransactionsPage() {
                                 </div>
                             </div>
 
+                            {isDownloading && (
+                                <div className="mt-6 space-y-2">
+                                    <div className="flex justify-between text-xs font-bold text-slate-400">
+                                        <span>Receiving data…</span>
+                                        <span>{(downloadedBytes / 1024).toFixed(1)} KB</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary rounded-full transition-all duration-300 animate-pulse"
+                                            style={{ width: `${Math.min(100, Math.log2(downloadedBytes / 1024 + 2) * 20)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="mt-8 flex gap-3">
                                 <button
                                     onClick={() => setIsDownloadModalOpen(false)}
-                                    className="flex-1 btn bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-2xl"
+                                    disabled={isDownloading}
+                                    className="flex-1 btn bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-2xl disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
@@ -1379,7 +1420,14 @@ export default function TransactionsPage() {
                                     disabled={isDownloading}
                                     className="flex-1 btn btn-primary rounded-2xl flex items-center justify-center gap-2"
                                 >
-                                    <Download size={18} /> {isDownloading ? 'Downloading...' : 'Download'}
+                                    {isDownloading ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Downloading…
+                                        </>
+                                    ) : (
+                                        <><Download size={18} /> Download</>
+                                    )}
                                 </button>
                             </div>
                         </div>
