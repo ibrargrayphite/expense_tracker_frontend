@@ -102,20 +102,42 @@ export default function Dashboard() {
     }
   }, [user, loading]);
 
+  const fetchAll = async (url: string) => {
+    let allResults: any[] = [];
+    let nextUrl: string | null = url;
+    while (nextUrl) {
+      const res: any = await api.get(nextUrl);
+      const data: any = res.data;
+      if (data.results) {
+        allResults = [...allResults, ...data.results];
+        nextUrl = data.next ? data.next : null;
+      } else {
+        allResults = Array.isArray(data) ? data : (data.results || []);
+        nextUrl = null;
+      }
+    }
+    return allResults;
+  };
+
   const fetchData = async () => {
     try {
       const [accountsRes, loansRes, transactionsRes, plannedRes] = await Promise.all([
-        api.get('accounts/'),
-        api.get('loans/'),
-        api.get('transactions/'),
-        api.get('planned-expenses/dropdown/'),
+        fetchAll('accounts/'),
+        fetchAll('loans/'),
+        fetchAll('transactions/'),
+        fetchAll('planned-expenses/dropdown/'),
       ]);
-      const plannedList: { amount: string }[] = plannedRes.data.results ?? plannedRes.data;
+
+      const accounts = accountsRes;
+      const loans = loansRes;
+      const transactions = transactionsRes;
+      const plannedList = plannedRes;
+
       setData({
-        accounts: accountsRes.data.results ?? accountsRes.data,
-        loans: loansRes.data.results ?? loansRes.data,
-        transactions: transactionsRes.data.results ?? transactionsRes.data,
-        plannedExpenseTotal: plannedList.reduce((s, p) => s + parseFloat(p.amount), 0),
+        accounts,
+        loans,
+        transactions,
+        plannedExpenseTotal: plannedList.reduce((s: number, p: any) => s + parseFloat(p.amount), 0),
         plannedExpenseCount: plannedList.length,
       });
     } catch (error) {
@@ -147,8 +169,8 @@ export default function Dashboard() {
     recentTransactions.forEach(t => {
       t.accounts.forEach(acc => {
         acc.splits.forEach(s => {
-          if (['INCOME', 'REIMBURSEMENT'].includes(s.type)) totalIncome += parseFloat(s.amount);
-          if (['EXPENSE', 'REPAYMENT'].includes(s.type)) totalExpenses += parseFloat(s.amount);
+          if (['INCOME'].includes(s.type)) totalIncome += parseFloat(s.amount);
+          if (['EXPENSE'].includes(s.type)) totalExpenses += parseFloat(s.amount);
         });
       });
     });
@@ -159,14 +181,17 @@ export default function Dashboard() {
       totalTaken,
       totalIncome,
       totalExpenses,
-      netCashFlow: totalIncome - totalExpenses,
+      // Net Cash Flow = Total Balance + Money Lent - Loans Taken - Active Planned Expenses (from all times)
+      netCashFlow: totalBalance + totalLent - totalTaken - data.plannedExpenseTotal,
     };
   }, [data]);
 
-  // Prepare chart data for spending by category
+  // Prepare chart data for spending by category (Last 30 Days)
   const spendingByType = useMemo(() => {
+    const thirtyDaysAgo = subDays(new Date(), 30);
     const typeMap: { [key: string]: number } = {};
     data.transactions.forEach(t => {
+      if (new Date(t.date) < thirtyDaysAgo) return;
       t.accounts.forEach(acc => {
         acc.splits.forEach(s => {
           if (['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(s.type)) {
@@ -182,29 +207,33 @@ export default function Dashboard() {
   }, [data.transactions]);
 
   // Prepare data for balance trend (last 7 days)
+  // Prepare data for 7-day net cash flow
   const balanceTrend = useMemo(() => {
-    const days = 7;
+    const days = 30;
     const trend = [];
     for (let i = days - 1; i >= 0; i--) {
       const date = subDays(new Date(), i);
-      const transactionsUpToDay = data.transactions.filter(t =>
-        new Date(t.date) <= date
+      const targetDateStr = format(date, 'yyyy-MM-dd');
+
+      const transactionsOnDay = data.transactions.filter(t =>
+        t.date.substring(0, 10) === targetDateStr
       );
-      let balance = 0;
-      transactionsUpToDay.forEach(t => {
+
+      let netFlow = 0;
+      transactionsOnDay.forEach(t => {
         t.accounts.forEach(acc => {
           acc.splits.forEach(s => {
-            if (['INCOME', 'LOAN_TAKEN', 'REIMBURSEMENT'].includes(s.type)) {
-              balance += parseFloat(s.amount);
-            } else if (['EXPENSE', 'MONEY_LENT', 'REPAYMENT'].includes(s.type)) {
-              balance -= parseFloat(s.amount);
+            if (s.type === 'INCOME' || s.type === 'LOAN_TAKEN' || s.type === 'REIMBURSEMENT') {
+              netFlow += parseFloat(s.amount);
+            } else if (s.type === 'EXPENSE' || s.type === 'REPAYMENT' || s.type === 'MONEY_LENT') {
+              netFlow -= parseFloat(s.amount);
             }
           });
         });
       });
       trend.push({
         date: format(date, 'MMM dd'),
-        balance: Math.round(balance),
+        netFlow: Math.round(netFlow),
       });
     }
     return trend;
@@ -230,8 +259,8 @@ export default function Dashboard() {
         if (transactionSortBy === 'amount_asc') return amtA - amtB;
         return 0;
       })
-      .slice(0, 5);
-  }, [data.transactions, transactionSearch, transactionSortBy]);
+      .slice(0, Math.max(5, data.accounts.length));
+  }, [data.transactions, data.accounts.length, transactionSearch, transactionSortBy]);
 
   // Filtered and sorted accounts for dashboard
   const filteredAccounts = useMemo(() => {
@@ -335,7 +364,7 @@ export default function Dashboard() {
                 <div className={`text-2xl md:text-3xl font-bold break-all ${stats.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   Rs. {Math.abs(stats.netCashFlow).toLocaleString()}
                 </div>
-                <div className="mt-4 text-xs font-semibold text-secondary uppercase tracking-wider">Last 30 days</div>
+                <div className="mt-4 text-xs font-semibold text-secondary uppercase tracking-wider">Overall Stand</div>
               </div>
 
               {/* Planned Expenses Card */}
@@ -361,7 +390,7 @@ export default function Dashboard() {
               <div className="card">
                 <div className="flex items-center gap-2 mb-6">
                   <Activity className="text-primary" size={20} />
-                  <h2 className="text-xl font-bold">Balance Trend (7 Days)</h2>
+                  <h2 className="text-xl font-bold">Net Cash Flow (30 Days)</h2>
                 </div>
                 <ResponsiveContainer width="100%" height={250}>
                   <AreaChart data={balanceTrend}>
@@ -384,7 +413,7 @@ export default function Dashboard() {
                     />
                     <Area
                       type="monotone"
-                      dataKey="balance"
+                      dataKey="netFlow"
                       stroke="#8b5cf6"
                       strokeWidth={2}
                       fillOpacity={1}
@@ -398,7 +427,7 @@ export default function Dashboard() {
               <div className="card">
                 <div className="flex items-center gap-2 mb-6">
                   <PieChartIcon className="text-primary" size={20} />
-                  <h2 className="text-xl font-bold">Spending Distribution</h2>
+                  <h2 className="text-xl font-bold">Spending Distribution (30 Days)</h2>
                 </div>
                 {spendingByType.length > 0 ? (
                   <ResponsiveContainer width="100%" height={250}>
@@ -582,22 +611,26 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-primary">{data.accounts.length}</div>
-                <div className="text-sm text-secondary mt-1">Total Accounts</div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="card text-center px-2">
+                <div className="text-2xl md:text-3xl font-bold text-primary">{data.accounts.length}</div>
+                <div className="text-xs text-secondary mt-1">Total Accounts</div>
               </div>
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-primary">{data.loans.filter(l => !l.is_closed).length}</div>
-                <div className="text-sm text-secondary mt-1">Active Loans</div>
+              <div className="card text-center px-2">
+                <div className="text-2xl md:text-3xl font-bold text-primary">{data.loans.filter(l => !l.is_closed).length}</div>
+                <div className="text-xs text-secondary mt-1 text-nowrap">Active Loans</div>
               </div>
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-primary">{data.transactions.length}</div>
-                <div className="text-sm text-secondary mt-1">Total Transactions</div>
+              <div className="card text-center px-2">
+                <div className="text-2xl md:text-3xl font-bold text-primary">{data.transactions.length}</div>
+                <div className="text-xs text-secondary mt-1 text-nowrap">Total Trans.</div>
               </div>
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-green-600">Rs. {stats.totalIncome.toLocaleString()}</div>
-                <div className="text-sm text-secondary mt-1">Income (30d)</div>
+              <div className="card text-center px-2">
+                <div className="text-2xl md:text-3xl font-bold text-green-600">Rs. {stats.totalIncome.toLocaleString()}</div>
+                <div className="text-xs text-secondary mt-1">Income (30d)</div>
+              </div>
+              <div className="card text-center px-2">
+                <div className="text-2xl md:text-3xl font-bold text-red-600">Rs. {stats.totalExpenses.toLocaleString()}</div>
+                <div className="text-xs text-secondary mt-1">Expense (30d)</div>
               </div>
             </div>
           </>
