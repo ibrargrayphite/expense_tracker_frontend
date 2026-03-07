@@ -17,7 +17,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (access: string, refresh: string) => void;
+    login: (access: string, refresh: string) => Promise<void>;
     logout: () => void;
     refreshUser: () => Promise<void>;
 }
@@ -39,6 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const fetchUserProfile = async () => {
+        setLoading(true);
         try {
             const res = await api.get('users/me/');
             setUser(res.data);
@@ -51,10 +52,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
-    const login = (access: string, refresh: string) => {
+    const login = async (access: string, refresh: string) => {
         localStorage.setItem('access_token', access);
         localStorage.setItem('refresh_token', refresh);
-        fetchUserProfile();
+        await fetchUserProfile();
         router.push('/dashboard');
     };
 

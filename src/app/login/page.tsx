@@ -61,7 +61,7 @@ export default function AuthPage() {
         try {
             if (mode === 'login') {
                 const response = await api.post('token/', { username, password });
-                login(response.data.access, response.data.refresh);
+                await login(response.data.access, response.data.refresh);
                 showToast('Welcome back!', 'success');
             } else {
                 await api.post('register/', {
@@ -72,7 +72,7 @@ export default function AuthPage() {
                     last_name: lastName
                 });
                 const response = await api.post('token/', { username, password });
-                login(response.data.access, response.data.refresh);
+                await login(response.data.access, response.data.refresh);
                 showToast('Account created! Welcome aboard.', 'success');
             }
         } catch (err: any) {
