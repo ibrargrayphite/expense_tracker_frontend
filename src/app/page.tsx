@@ -1,608 +1,621 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
-import api from '@/lib/api';
 import {
-  TrendingUp,
-  TrendingDown,
-  Landmark,
-  ArrowUpRight,
-  ArrowDownRight,
-  Clock,
-  Wallet,
-  PieChart as PieChartIcon,
-  Activity,
-  Calendar,
-  Search,
-  Filter,
-  ArrowUpDown,
-  CalendarClock
+  Wallet, TrendingUp, Users, Shield, ArrowRight,
+  BarChart3, CreditCard, Repeat, ChevronRight,
+  Star, CheckCircle, Zap, Globe
 } from 'lucide-react';
-import { useToast } from '@/context/ToastContext';
-import { getErrorMessage } from '@/lib/error-handler';
-import { format, subDays, startOfDay, parseISO } from 'date-fns';
-import {
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Legend
-} from 'recharts';
 
-interface Account {
-  id: number;
-  bank_name: string;
-  account_name: string;
-  balance: string;
-}
-
-interface Loan {
-  id: number;
-  person_name: string;
-  type: string;
-  remaining_amount: string;
-  total_amount: string;
-  is_closed: boolean;
-}
-
-interface Transaction {
-  id: number;
-  total_amount: string;
-  type?: string;
-  note: string;
-  date: string;
-  accounts: { account: number; bank_name: string; splits: { type: string; amount: string }[] }[];
-}
-
-const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
-
-export default function Dashboard() {
+export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { showToast } = useToast();
-  const [data, setData] = useState<{
-    accounts: Account[];
-    loans: Loan[];
-    transactions: Transaction[];
-    plannedExpenseTotal: number;
-    plannedExpenseCount: number;
-  }>({
-    accounts: [],
-    loans: [],
-    transactions: [],
-    plannedExpenseTotal: 0,
-    plannedExpenseCount: 0,
-  });
-  const [fetching, setFetching] = useState(true);
-
-  // Filter & sort state for dashboard sections
-  const [transactionSearch, setTransactionSearch] = useState('');
-  const [transactionSortBy, setTransactionSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
-  const [accountSearch, setAccountSearch] = useState('');
-  const [accountSortBy, setAccountSortBy] = useState<'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc'>('balance_desc');
-  const [showTransactionFilters, setShowTransactionFilters] = useState(false);
-  const [showAccountFilters, setShowAccountFilters] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [counted, setCounted] = useState(false);
+  const statsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/landing');
-      return;
+    if (!loading && user) {
+      router.push('/dashboard');
     }
-    if (user) {
-      fetchData();
-    }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
-  const fetchData = async () => {
-    try {
-      const [accountsRes, loansRes, transactionsRes, plannedRes] = await Promise.all([
-        api.get('accounts/'),
-        api.get('loans/'),
-        api.get('transactions/'),
-        api.get('planned-expenses/dropdown/'),
-      ]);
-      const plannedList: { amount: string }[] = plannedRes.data.results ?? plannedRes.data;
-      setData({
-        accounts: accountsRes.data.results ?? accountsRes.data,
-        loans: loansRes.data.results ?? loansRes.data,
-        transactions: transactionsRes.data.results ?? transactionsRes.data,
-        plannedExpenseTotal: plannedList.reduce((s, p) => s + parseFloat(p.amount), 0),
-        plannedExpenseCount: plannedList.length,
-      });
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      showToast(getErrorMessage(error), 'error');
-    } finally {
-      setFetching(false);
-    }
-  };
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const totalBalance = data.accounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
-    const totalLent = data.loans
-      .filter(l => l.type === 'LENT' && !l.is_closed)
-      .reduce((sum, l) => sum + parseFloat(l.remaining_amount), 0);
-    const totalTaken = data.loans
-      .filter(l => l.type === 'TAKEN' && !l.is_closed)
-      .reduce((sum, l) => sum + parseFloat(l.remaining_amount), 0);
-
-    const thirtyDaysAgo = subDays(new Date(), 30);
-    const recentTransactions = data.transactions.filter(t =>
-      new Date(t.date) >= thirtyDaysAgo
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setCounted(true); },
+      { threshold: 0.3 }
     );
-
-    let totalIncome = 0;
-    let totalExpenses = 0;
-
-    recentTransactions.forEach(t => {
-      t.accounts.forEach(acc => {
-        acc.splits.forEach(s => {
-          if (['INCOME', 'REIMBURSEMENT'].includes(s.type)) totalIncome += parseFloat(s.amount);
-          if (['EXPENSE', 'REPAYMENT'].includes(s.type)) totalExpenses += parseFloat(s.amount);
-        });
-      });
-    });
-
-    return {
-      totalBalance,
-      totalLent,
-      totalTaken,
-      totalIncome,
-      totalExpenses,
-      netCashFlow: totalIncome - totalExpenses,
-    };
-  }, [data]);
-
-  // Prepare chart data for spending by category
-  const spendingByType = useMemo(() => {
-    const typeMap: { [key: string]: number } = {};
-    data.transactions.forEach(t => {
-      t.accounts.forEach(acc => {
-        acc.splits.forEach(s => {
-          if (['EXPENSE', 'REPAYMENT', 'MONEY_LENT'].includes(s.type)) {
-            typeMap[s.type] = (typeMap[s.type] || 0) + parseFloat(s.amount);
-          }
-        });
-      });
-    });
-    return Object.entries(typeMap).map(([name, value]) => ({
-      name: name.replace('_', ' '),
-      value: Math.round(value),
-    }));
-  }, [data.transactions]);
-
-  // Prepare data for balance trend (last 7 days)
-  const balanceTrend = useMemo(() => {
-    const days = 7;
-    const trend = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const date = subDays(new Date(), i);
-      const transactionsUpToDay = data.transactions.filter(t =>
-        new Date(t.date) <= date
-      );
-      let balance = 0;
-      transactionsUpToDay.forEach(t => {
-        t.accounts.forEach(acc => {
-          acc.splits.forEach(s => {
-            if (['INCOME', 'LOAN_TAKEN', 'REIMBURSEMENT'].includes(s.type)) {
-              balance += parseFloat(s.amount);
-            } else if (['EXPENSE', 'MONEY_LENT', 'REPAYMENT'].includes(s.type)) {
-              balance -= parseFloat(s.amount);
-            }
-          });
-        });
-      });
-      trend.push({
-        date: format(date, 'MMM dd'),
-        balance: Math.round(balance),
-      });
-    }
-    return trend;
-  }, [data.transactions]);
-
-  // Filtered and sorted transactions for dashboard
-  const filteredTransactions = useMemo(() => {
-    return data.transactions
-      .filter(t => {
-        const matchesSearch = !transactionSearch ||
-          t.note?.toLowerCase().includes(transactionSearch.toLowerCase()) ||
-          t.accounts.some(acc => acc.splits.some(s => s.type.toLowerCase().includes(transactionSearch.toLowerCase())));
-        return matchesSearch;
-      })
-      .sort((a, b) => {
-        const timeA = new Date(a.date).getTime();
-        const timeB = new Date(b.date).getTime();
-        if (transactionSortBy === 'date_desc') return timeB - timeA;
-        if (transactionSortBy === 'date_asc') return timeA - timeB;
-        const amtA = parseFloat(a.total_amount);
-        const amtB = parseFloat(b.total_amount);
-        if (transactionSortBy === 'amount_desc') return amtB - amtA;
-        if (transactionSortBy === 'amount_asc') return amtA - amtB;
-        return 0;
-      })
-      .slice(0, 5);
-  }, [data.transactions, transactionSearch, transactionSortBy]);
-
-  // Filtered and sorted accounts for dashboard
-  const filteredAccounts = useMemo(() => {
-    return data.accounts
-      .filter(acc => {
-        const matchesSearch = !accountSearch ||
-          acc.account_name.toLowerCase().includes(accountSearch.toLowerCase()) ||
-          acc.bank_name.toLowerCase().includes(accountSearch.toLowerCase());
-        return matchesSearch;
-      })
-      .sort((a, b) => {
-        if (accountSortBy === 'balance_desc') return parseFloat(b.balance) - parseFloat(a.balance);
-        if (accountSortBy === 'balance_asc') return parseFloat(a.balance) - parseFloat(b.balance);
-        if (accountSortBy === 'name_asc') return a.account_name.localeCompare(b.account_name);
-        if (accountSortBy === 'name_desc') return b.account_name.localeCompare(a.account_name);
-        return 0;
-      });
-  }, [data.accounts, accountSearch, accountSortBy]);
+    if (statsRef.current) observer.observe(statsRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <>
-      <Navbar />
-      <main className="mx-[20px] py-8 space-y-8">
-        {/* Header — always visible */}
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">Dashboard</h1>
-            <p className="text-secondary mt-1">Welcome back, {user?.first_name} {user?.last_name}!</p>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        .lp-root {
+          min-height: 100vh;
+          background: #030712;
+          color: #f0f0ff;
+          font-family: 'Inter', sans-serif;
+          overflow-x: hidden;
+        }
+
+        /* ── Nav ── */
+        .lp-nav {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+          padding: 16px 24px;
+          display: flex; align-items: center; justify-content: space-between;
+          transition: background 0.3s, border-color 0.3s, backdrop-filter 0.3s;
+        }
+        .lp-nav.scrolled {
+          background: rgba(3,7,18,0.85);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(139,92,246,0.15);
+        }
+        .lp-logo {
+          display: flex; align-items: center; gap: 10px;
+          font-size: 1.25rem; font-weight: 800; letter-spacing: -0.04em;
+          color: #f0f0ff; text-decoration: none;
+        }
+        .lp-logo-icon {
+          width: 36px; height: 36px; border-radius: 10px;
+          background: linear-gradient(135deg, #7c3aed, #3b82f6);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 20px rgba(124,58,237,0.5);
+        }
+        .lp-nav-links { display: flex; align-items: center; gap: 8px; }
+        .lp-btn-ghost {
+          padding: 9px 20px; border-radius: 10px; border: none;
+          background: transparent; color: rgba(240,240,255,0.75);
+          font-size: 0.875rem; font-weight: 600; cursor: pointer;
+          text-decoration: none; transition: color 0.2s, background 0.2s;
+          font-family: inherit;
+        }
+        .lp-btn-ghost:hover { color: #f0f0ff; background: rgba(255,255,255,0.06); }
+        .lp-btn-primary {
+          padding: 9px 22px; border-radius: 10px; border: none;
+          background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+          color: #fff; font-size: 0.875rem; font-weight: 700;
+          cursor: pointer; text-decoration: none;
+          box-shadow: 0 4px 20px rgba(124,58,237,0.4);
+          transition: transform 0.15s, box-shadow 0.15s;
+          font-family: inherit; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .lp-btn-primary:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 28px rgba(124,58,237,0.55);
+        }
+
+        /* ── Hero ── */
+        .lp-hero {
+          min-height: 100vh;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          text-align: center;
+          padding: 120px 24px 80px;
+          position: relative; overflow: hidden;
+        }
+        .lp-hero-glow {
+          position: absolute; width: 900px; height: 900px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%);
+          top: 50%; left: 50%; transform: translate(-50%, -60%);
+          pointer-events: none;
+        }
+        .lp-hero-glow2 {
+          position: absolute; width: 600px; height: 600px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+          top: 60%; right: -10%; pointer-events: none;
+        }
+        .lp-badge {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 6px 16px; border-radius: 100px;
+          border: 1px solid rgba(124,58,237,0.4);
+          background: rgba(124,58,237,0.1);
+          color: #a78bfa; font-size: 0.75rem; font-weight: 700;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          margin-bottom: 28px;
+          animation: lp-fadein 0.6s ease forwards;
+        }
+        .lp-hero-title {
+          font-size: clamp(2.5rem, 7vw, 5rem);
+          font-weight: 900; letter-spacing: -0.04em; line-height: 1.07;
+          margin-bottom: 24px;
+          animation: lp-fadein 0.7s ease 0.1s both;
+        }
+        .lp-gradient-text {
+          background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #34d399 100%);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .lp-hero-sub {
+          font-size: clamp(1rem, 2vw, 1.25rem);
+          color: rgba(200,200,230,0.7); line-height: 1.7; max-width: 580px;
+          margin: 0 auto 48px;
+          animation: lp-fadein 0.7s ease 0.2s both;
+        }
+        .lp-hero-cta {
+          display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+          animation: lp-fadein 0.7s ease 0.3s both;
+        }
+        .lp-btn-hero {
+          padding: 16px 36px; border-radius: 14px; border: none;
+          background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+          color: #fff; font-size: 1rem; font-weight: 700;
+          cursor: pointer; text-decoration: none;
+          box-shadow: 0 8px 32px rgba(124,58,237,0.45);
+          transition: transform 0.15s, box-shadow 0.15s;
+          font-family: inherit; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .lp-btn-hero:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 40px rgba(124,58,237,0.6);
+        }
+        .lp-btn-outline {
+          padding: 16px 36px; border-radius: 14px;
+          border: 1px solid rgba(255,255,255,0.15);
+          background: rgba(255,255,255,0.04);
+          color: rgba(240,240,255,0.85); font-size: 1rem; font-weight: 600;
+          cursor: pointer; text-decoration: none;
+          transition: border-color 0.2s, background 0.2s, transform 0.15s;
+          font-family: inherit; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .lp-btn-outline:hover {
+          border-color: rgba(124,58,237,0.5);
+          background: rgba(124,58,237,0.08);
+          transform: translateY(-2px);
+        }
+
+        /* ── Dashboard preview ── */
+        .lp-preview-wrap {
+          margin-top: 80px; position: relative;
+          animation: lp-fadein 0.8s ease 0.5s both;
+          width: min(900px, 96vw); margin-left: auto; margin-right: auto;
+        }
+        .lp-preview-frame {
+          border-radius: 20px; overflow: hidden;
+          border: 1px solid rgba(124,58,237,0.25);
+          box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+          background: #0f0d1a;
+          padding: 24px;
+        }
+        .lp-preview-topbar {
+          display: flex; gap: 6px; margin-bottom: 20px;
+        }
+        .lp-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .lp-preview-cards {
+          display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px;
+        }
+        @media(max-width:640px){ .lp-preview-cards { grid-template-columns: repeat(2,1fr); } }
+        .lp-preview-card {
+          background: rgba(255,255,255,0.04); border-radius: 12px; padding: 14px;
+          border: 1px solid rgba(255,255,255,0.07);
+        }
+        .lp-preview-label { font-size: 9px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+        .lp-preview-val { font-size: 1rem; font-weight: 800; color: #f0f0ff; }
+        .lp-preview-sub { font-size: 8px; color: rgba(160,255,180,0.8); margin-top: 4px; }
+        .lp-preview-bottom {
+          display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px;
+        }
+        @media(max-width:560px){ .lp-preview-bottom { grid-template-columns: 1fr; } }
+        .lp-preview-chart-placeholder {
+          background: rgba(255,255,255,0.03); border-radius: 12px; padding: 14px;
+          border: 1px solid rgba(255,255,255,0.06); height: 100px;
+          display:flex; align-items:flex-end; gap: 6px; overflow: hidden;
+        }
+        .lp-bar {
+          flex: 1; border-radius: 4px 4px 0 0;
+          background: linear-gradient(180deg, #7c3aed, #4f46e5);
+          opacity: 0.7; transition: height 0.8s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .lp-preview-list {
+          background: rgba(255,255,255,0.03); border-radius: 12px; padding: 14px;
+          border: 1px solid rgba(255,255,255,0.06);
+        }
+        .lp-preview-row {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.045);
+          font-size: 10px;
+        }
+        .lp-preview-row:last-child { border-bottom: none; }
+        .lp-preview-row-name { color: rgba(255,255,255,0.6); }
+        .lp-preview-row-amt { font-weight: 700; }
+
+        /* ── Stats ── */
+        .lp-stats {
+          display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;
+          padding: 60px 24px; border-top: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .lp-stat { text-align: center; }
+        .lp-stat-num {
+          font-size: 2.5rem; font-weight: 900; letter-spacing: -0.04em;
+          background: linear-gradient(135deg, #a78bfa, #60a5fa);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .lp-stat-label { font-size: 0.8125rem; color: rgba(200,200,230,0.5); margin-top: 4px; font-weight: 500; }
+
+        /* ── Features ── */
+        .lp-section { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+        .lp-section-label {
+          display: inline-block; font-size: 0.75rem; font-weight: 700;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          color: #a78bfa; margin-bottom: 14px;
+        }
+        .lp-section-title {
+          font-size: clamp(1.875rem, 4vw, 3rem);
+          font-weight: 900; letter-spacing: -0.04em; line-height: 1.1;
+          margin-bottom: 16px;
+        }
+        .lp-section-sub {
+          font-size: 1.0625rem; color: rgba(200,200,230,0.6);
+          max-width: 520px; line-height: 1.7; margin-bottom: 60px;
+        }
+        .lp-features-grid {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+        }
+        @media(max-width:768px){ .lp-features-grid { grid-template-columns: 1fr; } }
+        @media(min-width:640px) and (max-width:768px){ .lp-features-grid { grid-template-columns: repeat(2,1fr); } }
+        .lp-feature-card {
+          background: rgba(255,255,255,0.03); border-radius: 20px; padding: 28px;
+          border: 1px solid rgba(255,255,255,0.07);
+          transition: transform 0.2s, border-color 0.2s, background 0.2s;
+        }
+        .lp-feature-card:hover {
+          transform: translateY(-4px);
+          border-color: rgba(124,58,237,0.35);
+          background: rgba(124,58,237,0.06);
+        }
+        .lp-feature-icon {
+          width: 48px; height: 48px; border-radius: 14px;
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 20px;
+        }
+        .lp-feature-title { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: #f0f0ff; }
+        .lp-feature-desc { font-size: 0.875rem; color: rgba(200,200,230,0.55); line-height: 1.65; }
+
+        /* ── How it works ── */
+        .lp-steps { display: flex; flex-direction: column; gap: 0; }
+        .lp-step {
+          display: grid; grid-template-columns: 56px 1fr; gap: 24px;
+          padding: 32px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+          align-items: start;
+        }
+          .auth-logo {
+                    font-family: 'Syne', sans-serif;
+                    font-weight: 800;
+                    font-size: 1.5rem;
+                    letter-spacing: -0.04em;
+                    background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 60%, #34d399 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    text-decoration: none;
+                    display: inline-block;
+                    margin-bottom: 2rem;
+                }
+        .lp-step:last-child { border-bottom: none; }
+        .lp-step-num {
+          width: 48px; height: 48px; border-radius: 14px;
+          background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(59,130,246,0.2));
+          border: 1px solid rgba(124,58,237,0.35);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 0.875rem; font-weight: 800; color: #a78bfa; flex-shrink: 0;
+        }
+        .lp-step-title { font-size: 1.0625rem; font-weight: 700; margin-bottom: 8px; }
+        .lp-step-desc { font-size: 0.875rem; color: rgba(200,200,230,0.55); line-height: 1.65; }
+
+        /* ── Testimonials ── */
+        .lp-testimonials-grid {
+          display: grid; grid-template-columns: repeat(3,1fr); gap: 20px;
+        }
+        @media(max-width:768px){ .lp-testimonials-grid { grid-template-columns: 1fr; } }
+        .lp-testimonial {
+          background: rgba(255,255,255,0.03); border-radius: 20px; padding: 28px;
+          border: 1px solid rgba(255,255,255,0.07);
+        }
+        .lp-stars { display:flex; gap:3px; margin-bottom: 16px; color: #f59e0b; }
+        .lp-testimonial-text { font-size: 0.9375rem; color: rgba(200,200,230,0.7); line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+        .lp-testimonial-author { display:flex; align-items:center; gap: 12px; }
+        .lp-author-avatar {
+          width: 38px; height: 38px; border-radius: 12px;
+          display:flex; align-items:center; justify-content:center;
+          font-size: 0.875rem; font-weight: 800; color: #fff;
+        }
+        .lp-author-name { font-size: 0.875rem; font-weight: 700; color: #f0f0ff; }
+        .lp-author-role { font-size: 0.75rem; color: rgba(200,200,230,0.45); }
+
+        /* ── CTA ── */
+        .lp-cta-section {
+          margin: 0 24px 100px; padding: 80px 40px;
+          border-radius: 28px; text-align: center;
+          background: linear-gradient(135deg, rgba(124,58,237,0.25) 0%, rgba(59,130,246,0.15) 100%);
+          border: 1px solid rgba(124,58,237,0.3);
+          position: relative; overflow: hidden;
+        }
+        .lp-cta-glow {
+          position: absolute; width: 600px; height: 600px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%);
+          top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;
+        }
+        .lp-cta-title { font-size: clamp(1.75rem,4vw,2.75rem); font-weight: 900; letter-spacing: -0.04em; margin-bottom: 16px; }
+        .lp-cta-sub { font-size: 1.0625rem; color: rgba(200,200,230,0.65); margin-bottom: 40px; }
+        .lp-cta-buttons { display:flex; gap: 14px; justify-content: center; flex-wrap: wrap; position: relative; }
+
+        /* ── Footer ── */
+        .lp-footer {
+          border-top: 1px solid rgba(255,255,255,0.06);
+          padding: 40px 24px; text-align: center;
+          color: rgba(200,200,230,0.35); font-size: 0.8125rem;
+          display: flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+          max-width: 1100px; margin: 0 auto;
+        }
+        .lp-footer-links { display: flex; gap: 20px; }
+        .lp-footer-link { color: rgba(200,200,230,0.35); text-decoration: none; transition: color 0.2s; }
+        .lp-footer-link:hover { color: #a78bfa; }
+
+        /* ── Animations ── */
+        @keyframes lp-fadein {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .lp-check { color: #34d399; flex-shrink: 0; margin-top: 2px; }
+      `}</style>
+
+      <div className="lp-root">
+        {/* ── Navbar ── */}
+        <nav className={`lp-nav ${scrolled ? 'scrolled' : ''}`}>
+          <Link href="/" className="auth-logo">XPENSE</Link>
+
+          <div className="lp-nav-links">
+            <Link href="/login" className="lp-btn-ghost">Sign In</Link>
+            <Link href="/login" className="lp-btn-primary">
+              Get Started <ChevronRight size={14} />
+            </Link>
           </div>
-          <div className="flex items-center gap-2 text-sm text-secondary">
-            <Calendar size={16} />
-            <span>{format(new Date(), 'EEEE, MMMM dd, yyyy')}</span>
+        </nav>
+
+        {/* ── Hero ── */}
+        <section className="lp-hero">
+          <div className="lp-hero-glow" />
+          <div className="lp-hero-glow2" />
+
+          <div className="lp-badge">
+            <Zap size={11} /> Smart Finance Tracking
           </div>
-        </header>
 
-        {fetching ? (
-          <div className="min-h-[500px] flex flex-col items-center justify-center gap-6">
-            <div className="relative flex items-center justify-center w-20 h-20">
-              {/* Outer ring */}
-              <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800" />
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-              {/* Middle ring */}
-              <div className="absolute inset-3 rounded-full border-4 border-slate-200 dark:border-slate-800" />
-              <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-red-400 animate-spin [animation-duration:600ms] [animation-direction:reverse]" />
-              {/* Inner dot */}
-              <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <p className="text-slate-800 dark:text-slate-100 text-sm font-bold tracking-wide">Loading Dashboard</p>
-              <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
-              </div>
-            </div>
+          <h1 className="lp-hero-title">
+            Take control of<br />
+            <span className="lp-gradient-text">your finances</span>
+          </h1>
+
+          <p className="lp-hero-sub">
+            Track expenses, manage loans, and monitor all your bank accounts in one
+            beautiful dashboard. Know exactly where your money goes.
+          </p>
+
+          <div className="lp-hero-cta">
+            <Link href="/login" className="lp-btn-hero">
+              Start for Free <ArrowRight size={16} />
+            </Link>
+            <Link href="/login" className="lp-btn-outline">
+              Sign In
+            </Link>
           </div>
-        ) : (
-          <>
-            {/* Top Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 md:gap-6">
-              <div className="card">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="opacity-80 font-medium text-sm md:text-base">Total Balance</span>
-                  <Landmark size={20} className="opacity-80 shrink-0" />
-                </div>
-                <div className="text-2xl md:text-3xl font-bold break-all">Rs. {stats.totalBalance.toLocaleString()}</div>
-                <div className="mt-4 text-xs font-semibold uppercase tracking-wider opacity-60">
-                  {data.accounts.length} accounts
-                </div>
+
+          {/* Dashboard Preview */}
+          <div className="lp-preview-wrap">
+            <div className="lp-preview-frame">
+              <div className="lp-preview-topbar">
+                <div className="lp-dot" style={{ background: '#ff5f57' }} />
+                <div className="lp-dot" style={{ background: '#febc2e' }} />
+                <div className="lp-dot" style={{ background: '#28c840' }} />
               </div>
-
-              <div className="card">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-secondary font-medium text-sm md:text-base">Money Lent</span>
-                  <div className="p-2 rounded-lg bg-green-500/10 text-green-500 shrink-0">
-                    <ArrowUpRight size={20} />
+              <div className="lp-preview-cards">
+                {[
+                  { label: 'Total Balance', val: 'Rs. 284,500', sub: '+12.4% this month', color: '#a78bfa' },
+                  { label: 'Money Lent', val: 'Rs. 45,000', sub: 'To be received', color: '#34d399' },
+                  { label: 'Loans Taken', val: 'Rs. 20,000', sub: 'To be repaid', color: '#f87171' },
+                  { label: 'Net Cash Flow', val: 'Rs. 38,200', sub: 'Last 30 days', color: '#60a5fa' },
+                ].map((c) => (
+                  <div key={c.label} className="lp-preview-card">
+                    <div className="lp-preview-label">{c.label}</div>
+                    <div className="lp-preview-val" style={{ color: c.color }}>{c.val}</div>
+                    <div className="lp-preview-sub">{c.sub}</div>
                   </div>
-                </div>
-                <div className="text-2xl md:text-3xl font-bold break-all">Rs. {stats.totalLent.toLocaleString()}</div>
-                <div className="mt-4 text-xs font-semibold text-green-600 uppercase tracking-wider">To be received</div>
+                ))}
               </div>
-
-              <div className="card">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-secondary font-medium text-sm md:text-base">Loans Taken</span>
-                  <div className="p-2 rounded-lg bg-red-500/10 text-red-500 shrink-0">
-                    <ArrowDownRight size={20} />
-                  </div>
+              <div className="lp-preview-bottom">
+                <div className="lp-preview-chart-placeholder">
+                  {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
+                    <div key={i} className="lp-bar" style={{ height: counted ? `${h}%` : '4px' }} />
+                  ))}
                 </div>
-                <div className="text-2xl md:text-3xl font-bold break-all">Rs. {stats.totalTaken.toLocaleString()}</div>
-                <div className="mt-4 text-xs font-semibold text-red-600 uppercase tracking-wider">To be repaid</div>
-              </div>
-
-              <div className="card">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-secondary font-medium text-sm md:text-base">Net Cash Flow</span>
-                  <div className={`p-2 rounded-lg ${stats.netCashFlow >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'} shrink-0`}>
-                    {stats.netCashFlow >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-                  </div>
-                </div>
-                <div className={`text-2xl md:text-3xl font-bold break-all ${stats.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  Rs. {Math.abs(stats.netCashFlow).toLocaleString()}
-                </div>
-                <div className="mt-4 text-xs font-semibold text-secondary uppercase tracking-wider">Last 30 days</div>
-              </div>
-
-              {/* Planned Expenses Card */}
-              <a href="/planned-expenses" className="card block hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-secondary font-medium text-sm md:text-base">Planned Expenses</span>
-                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 shrink-0">
-                    <CalendarClock size={20} />
-                  </div>
-                </div>
-                <div className="text-2xl md:text-3xl font-bold break-all text-amber-600">
-                  Rs. {data.plannedExpenseTotal.toLocaleString()}
-                </div>
-                <div className="mt-4 text-xs font-semibold text-amber-500 uppercase tracking-wider">
-                  {data.plannedExpenseCount} pending plan{data.plannedExpenseCount !== 1 ? 's' : ''}
-                </div>
-              </a>
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Balance Trend */}
-              <div className="card">
-                <div className="flex items-center gap-2 mb-6">
-                  <Activity className="text-primary" size={20} />
-                  <h2 className="text-xl font-bold">Balance Trend (7 Days)</h2>
-                </div>
-                <ResponsiveContainer width="100%" height={250}>
-                  <AreaChart data={balanceTrend}>
-                    <defs>
-                      <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
-                    <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="balance"
-                      stroke="#8b5cf6"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorBalance)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Spending Distribution */}
-              <div className="card">
-                <div className="flex items-center gap-2 mb-6">
-                  <PieChartIcon className="text-primary" size={20} />
-                  <h2 className="text-xl font-bold">Spending Distribution</h2>
-                </div>
-                {spendingByType.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={spendingByType}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => percent !== undefined ? `${name}: ${(percent * 100).toFixed(0)}%` : name}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {spendingByType.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[250px] flex items-center justify-center text-secondary">
-                    No spending data available
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Recent Transactions & Account Summary */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent Transactions */}
-              <div className="card">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <Clock className="text-primary" size={20} />
-                    <h2 className="text-xl font-bold">Recent Transactions</h2>
-                  </div>
-                  <button
-                    onClick={() => setShowTransactionFilters(!showTransactionFilters)}
-                    className={`p-2 rounded-lg transition-colors ${showTransactionFilters ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                  >
-                    <Filter size={16} />
-                  </button>
-                </div>
-
-                {/* Transaction Filters */}
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showTransactionFilters ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl space-y-3">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <select
-                        className="input-field text-sm h-10 bg-white dark:bg-slate-900 border-none sm:w-40"
-                        value={transactionSortBy}
-                        onChange={e => setTransactionSortBy(e.target.value as any)}
-                      >
-                        <option value="date_desc">📅 Newest</option>
-                        <option value="date_asc">📅 Oldest</option>
-                        <option value="amount_desc">💰 High</option>
-                        <option value="amount_asc">💰 Low</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-secondary uppercase tracking-widest font-bold">
-                      <span>{filteredTransactions.length} items</span>
-                      {(transactionSearch || transactionSortBy !== 'date_desc') && (
-                        <button
-                          onClick={() => { setTransactionSearch(''); setTransactionSortBy('date_desc'); }}
-                          className="text-primary hover:underline"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {filteredTransactions.map((t) => {
-                    const mainSplit = t.accounts[0]?.splits[0];
-                    const type = mainSplit?.type || 'EXPENSE';
-                    const isIncome = ['INCOME', 'REIMBURSEMENT', 'LOAN_TAKEN'].includes(type);
-                    return (
-                      <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-xl">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isIncome ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
-                            {isIncome ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{t.note || type.replace('_', ' ')}</p>
-                            <p className="text-xs text-secondary">{t.accounts[0]?.bank_name} • {format(new Date(t.date), 'MMM dd')}</p>
-                          </div>
-                        </div>
-                        <div className={`font-bold whitespace-nowrap ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-                          {isIncome ? '+' : '-'}Rs. {parseFloat(t.total_amount).toLocaleString()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {filteredTransactions.length === 0 && (
-                    <div className="text-center py-8 text-secondary">
-                      {data.transactions.length === 0 ? 'No transactions yet' : 'No transactions match your filters'}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Account Summary */}
-              <div className="card">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <Wallet className="text-primary" size={20} />
-                    <h2 className="text-xl font-bold">Account Summary</h2>
-                  </div>
-                  <button
-                    onClick={() => setShowAccountFilters(!showAccountFilters)}
-                    className={`p-2 rounded-lg transition-colors ${showAccountFilters ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                  >
-                    <ArrowUpDown size={16} />
-                  </button>
-                </div>
-
-                {/* Account Filters */}
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showAccountFilters ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0'}`}>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl space-y-3">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <select
-                        className="input-field text-sm h-10 bg-white dark:bg-slate-900 border-none sm:w-40"
-                        value={accountSortBy}
-                        onChange={e => setAccountSortBy(e.target.value as 'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc')}
-                      >
-                        <option value="balance_desc">💰 Balance High</option>
-                        <option value="balance_asc">💰 Balance Low</option>
-                        <option value="name_asc">🔤 Name A→Z</option>
-                        <option value="name_desc">🔤 Name Z→A</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-secondary uppercase tracking-widest font-bold">
-                      <span>{filteredAccounts.length} accounts</span>
-                      {(accountSearch || accountSortBy !== 'balance_desc') && (
-                        <button
-                          onClick={() => { setAccountSearch(''); setAccountSortBy('balance_desc'); }}
-                          className="text-primary hover:underline"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {filteredAccounts.map((acc) => (
-                    <div key={acc.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
-                          {acc.bank_name[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{acc.account_name}</p>
-                          <p className="text-xs text-secondary">{acc.bank_name}</p>
-                        </div>
-                      </div>
-                      <div className="font-bold whitespace-nowrap">
-                        Rs. {parseFloat(acc.balance).toLocaleString()}
-                      </div>
+                <div className="lp-preview-list">
+                  {[
+                    { name: 'Groceries', amt: '-Rs. 3,200', color: '#f87171' },
+                    { name: 'Salary', amt: '+Rs. 85,000', color: '#34d399' },
+                    { name: 'Electricity', amt: '-Rs. 4,500', color: '#f87171' },
+                    { name: 'Freelance', amt: '+Rs. 25,000', color: '#34d399' },
+                  ].map((r) => (
+                    <div key={r.name} className="lp-preview-row">
+                      <span className="lp-preview-row-name">{r.name}</span>
+                      <span className="lp-preview-row-amt" style={{ color: r.color }}>{r.amt}</span>
                     </div>
                   ))}
-                  {data.accounts.length === 0 && (
-                    <div className="text-center py-8 text-secondary">
-                      No accounts added yet
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-primary">{data.accounts.length}</div>
-                <div className="text-sm text-secondary mt-1">Total Accounts</div>
-              </div>
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-primary">{data.loans.filter(l => !l.is_closed).length}</div>
-                <div className="text-sm text-secondary mt-1">Active Loans</div>
-              </div>
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-primary">{data.transactions.length}</div>
-                <div className="text-sm text-secondary mt-1">Total Transactions</div>
-              </div>
-              <div className="card text-center">
-                <div className="text-3xl font-bold text-green-600">Rs. {stats.totalIncome.toLocaleString()}</div>
-                <div className="text-sm text-secondary mt-1">Income (30d)</div>
-              </div>
+        {/* ── Stats ── */}
+        <div ref={statsRef} className="lp-stats">
+          {[
+            { num: '50K+', label: 'Transactions Tracked' },
+            { num: '10K+', label: 'Active Users' },
+            { num: '99.9%', label: 'Uptime Guarantee' },
+            { num: '4.9★', label: 'Average Rating' },
+          ].map((s) => (
+            <div key={s.label} className="lp-stat">
+              <div className="lp-stat-num">{s.num}</div>
+              <div className="lp-stat-label">{s.label}</div>
             </div>
-          </>
-        )}
-      </main>
+          ))}
+        </div>
+
+        {/* ── Features ── */}
+        <section className="lp-section">
+          <span className="lp-section-label">Everything You Need</span>
+          <h2 className="lp-section-title">Powerful features,<br />simple interface</h2>
+          <p className="lp-section-sub">
+            Every tool you need to understand and control your personal finances — all in one place.
+          </p>
+          <div className="lp-features-grid">
+            {[
+              {
+                icon: <BarChart3 size={22} color="#a78bfa" />,
+                bg: 'rgba(124,58,237,0.15)',
+                title: 'Smart Dashboard',
+                desc: 'Visual charts and real-time stats give you an instant snapshot of your financial health — income, expenses, and trends at a glance.',
+              },
+              {
+                icon: <CreditCard size={22} color="#60a5fa" />,
+                bg: 'rgba(59,130,246,0.15)',
+                title: 'Multi-Account Management',
+                desc: 'Connect all your bank accounts and wallets. Track balances across HBL, UBL, MCB, and more — even your cash wallet.',
+              },
+              {
+                icon: <Users size={22} color="#34d399" />,
+                bg: 'rgba(52,211,153,0.15)',
+                title: 'Contact & Loan Tracking',
+                desc: 'Keep track of money you\'ve lent or borrowed. Automatically manage loan balances and get notified when they\'re settled.',
+              },
+              {
+                icon: <Repeat size={22} color="#f59e0b" />,
+                bg: 'rgba(245,158,11,0.15)',
+                title: 'Internal Transfers',
+                desc: 'Move money between your own accounts instantly. Balances update automatically so you\'re always in sync.',
+              },
+              {
+                icon: <TrendingUp size={22} color="#f87171" />,
+                bg: 'rgba(248,113,113,0.15)',
+                title: 'Income & Expense Categories',
+                desc: 'Customize income sources and expense categories. See exactly where your money comes from and where it goes.',
+              },
+              {
+                icon: <Shield size={22} color="#c084fc" />,
+                bg: 'rgba(192,132,252,0.15)',
+                title: 'Secure & Private',
+                desc: 'JWT authentication and encrypted data ensure your financial information stays private and secure at all times.',
+              },
+            ].map((f) => (
+              <div key={f.title} className="lp-feature-card">
+                <div className="lp-feature-icon" style={{ background: f.bg }}>{f.icon}</div>
+                <div className="lp-feature-title">{f.title}</div>
+                <div className="lp-feature-desc">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── How it works ── */}
+        <section style={{ background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '100px 24px' }}>
+          <div style={{ maxWidth: 700, margin: '0 auto' }}>
+            <span className="lp-section-label">How It Works</span>
+            <h2 className="lp-section-title" style={{ marginBottom: 48 }}>Up and running<br />in 3 steps</h2>
+            <div className="lp-steps">
+              {[
+                { n: '01', title: 'Create your account', desc: 'Sign up in seconds with just your name, email, and password. No credit card required — completely free to start.' },
+                { n: '02', title: 'Add your accounts & contacts', desc: 'Add your bank accounts and cash wallet. Then add contacts for people you lend to or borrow from.' },
+                { n: '03', title: 'Track every transaction', desc: 'Record income, expenses, transfers, and loans. Watch your dashboard come alive with charts and insights.' },
+              ].map((s) => (
+                <div key={s.n} className="lp-step">
+                  <div className="lp-step-num">{s.n}</div>
+                  <div>
+                    <div className="lp-step-title">{s.title}</div>
+                    <div className="lp-step-desc">{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Testimonials ── */}
+        <section className="lp-section">
+          <span className="lp-section-label">Loved by Users</span>
+          <h2 className="lp-section-title" style={{ marginBottom: 48 }}>People trust XPENSE</h2>
+          <div className="lp-testimonials-grid">
+            {[
+              { text: '"XPENSE completely changed how I manage money. The loan tracking feature alone saved me from losing track of thousands of rupees."', name: 'Ahmed Raza', role: 'Freelancer, Lahore', initial: 'A', color: '#7c3aed' },
+              { text: '"I manage 4 bank accounts and XPENSE keeps them all in sync. The dashboard charts make it so easy to see my financial health."', name: 'Sara Malik', role: 'Business Owner, Karachi', initial: 'S', color: '#3b82f6' },
+              { text: '"Finally an expense tracker that tracks loans too! I was using spreadsheets before — XPENSE is 10x better."', name: 'Usman Khan', role: 'Software Engineer, Islamabad', initial: 'U', color: '#10b981' },
+            ].map((t) => (
+              <div key={t.name} className="lp-testimonial">
+                <div className="lp-stars">{[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" />)}</div>
+                <p className="lp-testimonial-text">{t.text}</p>
+                <div className="lp-testimonial-author">
+                  <div className="lp-author-avatar" style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}99)` }}>{t.initial}</div>
+                  <div>
+                    <div className="lp-author-name">{t.name}</div>
+                    <div className="lp-author-role">{t.role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── CTA ── */}
+        <div className="lp-cta-section">
+          <div className="lp-cta-glow" />
+          <h2 className="lp-cta-title">Ready to take control?</h2>
+          <p className="lp-cta-sub">Join thousands of users who trust XPENSE to manage their finances.</p>
+          <div className="lp-cta-buttons">
+            <Link href="/login" className="lp-btn-hero">
+              Create Free Account <ArrowRight size={16} />
+            </Link>
+            <Link href="/login" className="lp-btn-outline">
+              I already have an account
+            </Link>
+          </div>
+          <div style={{ display: 'flex', gap: 28, justifyContent: 'center', marginTop: 36, flexWrap: 'wrap' }}>
+            {['No credit card required', 'Free forever', 'Secure & private'].map((item) => (
+              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'rgba(200,200,230,0.5)' }}>
+                <CheckCircle size={14} className="lp-check" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '32px 24px', maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <Link href="/" className="lp-logo" style={{ fontSize: '1rem' }}>
+            <div className="lp-logo-icon" style={{ width: 28, height: 28, borderRadius: 8 }}><Wallet size={15} color="#fff" /></div>
+            XPENSE
+          </Link>
+          <div style={{ fontSize: '0.8125rem', color: 'rgba(200,200,230,0.3)' }}>© 2026 XPENSE. Built for financial clarity.</div>
+          <div style={{ display: 'flex', gap: 20 }}>
+            {[['Sign In', '/login'], ['Register', '/login']].map(([label, href]) => (
+              <Link key={label} href={href} className="lp-footer-link">{label}</Link>
+            ))}
+          </div>
+        </footer>
+      </div>
     </>
   );
 }

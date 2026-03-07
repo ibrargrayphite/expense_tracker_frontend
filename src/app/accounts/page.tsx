@@ -93,7 +93,7 @@ export default function AccountsPage() {
     const totalBalance = accounts.reduce((s, a) => s + parseFloat(a.balance), 0);
 
     useEffect(() => {
-        if (!loading && !user) router.push('/login');
+        if (!loading && !user) router.push('/');
         if (user) fetchAccounts();
     }, [user, loading, currentPage, triggerFetch]);
 
@@ -371,12 +371,6 @@ export default function AccountsPage() {
                                             <p className="text-2xl font-black text-primary">Rs. {parseFloat(acc.balance).toLocaleString()}</p>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <button
-                                                onClick={() => toggleExpand(acc.id)}
-                                                className={`p-2 rounded-xl transition-all ${expandedAccounts[acc.id] ? 'bg-primary text-white' : 'text-slate-400 hover:text-primary hover:bg-primary/5'}`}
-                                            >
-                                                <HistoryIcon size={20} />
-                                            </button>
                                             {acc.bank_name !== 'CASH' && (
                                                 <>
                                                     <button onClick={() => handleOpenModal(acc)} className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors">
@@ -391,58 +385,7 @@ export default function AccountsPage() {
                                     </div>
                                 </div>
 
-                                {/* Transaction Dropdown (Recent 5) */}
-                                {expandedAccounts[acc.id] && (
-                                    <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 animate-slide-down">
-                                        <div className="p-4 space-y-3">
-                                            <div className="flex items-center justify-between px-2">
-                                                <h4 className="text-[10px] font-black text-secondary uppercase tracking-widest">Recent Activity (Last 5)</h4>
-                                                <button onClick={() => router.push('/transactions')} className="text-[10px] font-bold text-primary hover:underline">View All History</button>
-                                            </div>
 
-                                            <div className="space-y-1">
-                                                {acc.recent_transactions && acc.recent_transactions.length > 0 ? (
-                                                    acc.recent_transactions.map((tx) => {
-                                                        const isTransfer = tx.is_internal;
-                                                        const isOutgoing = isTransfer ? tx.from_account_name === acc.account_name :
-                                                            tx.accounts?.some(ta => ta.account === acc.id && ta.splits.some(s => ['EXPENSE', 'MONEY_LENT', 'LOAN_REPAYMENT'].includes(s.type)));
-
-                                                        const accountEntry = tx.accounts?.find(ta => ta.account === acc.id);
-                                                        const transactionType = isTransfer ? 'Internal Transfer' : (accountEntry?.splits?.[0]?.type?.replace('_', ' ') || 'Record');
-
-                                                        return (
-                                                            <div key={tx.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-white dark:hover:bg-slate-800 transition-colors group">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className={`p-2 rounded-xl ${isTransfer ? 'bg-blue-100/50 text-blue-600' : isOutgoing ? 'bg-red-50/50 text-red-600' : 'bg-green-50/50 text-green-600'}`}>
-                                                                        {isTransfer ? <ArrowUpDown size={14} /> : isOutgoing ? <Trash2 size={14} className="rotate-45" /> : <Plus size={14} />}
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                                                                                {isTransfer ? (tx.from_account_name === acc.account_name ? `Transfer to ${tx.to_account_name}` : `Transfer from ${tx.from_account_name}`) : (tx.note || 'Untitled Record')}
-                                                                            </p>
-                                                                            <span className="text-[10px] text-slate-400 font-medium">
-                                                                                {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
-                                                                            </span>
-                                                                        </div>
-                                                                        <p className="text-[10px] text-secondary font-medium">{transactionType}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <p className={`text-sm font-black ${isTransfer ? 'text-blue-500' : isOutgoing ? 'text-red-500' : 'text-green-500'}`}>
-                                                                    {isOutgoing ? '-' : '+'}Rs. {parseFloat(tx.total_amount?.toString() || '0').toLocaleString()}
-                                                                </p>
-                                                            </div>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <div className="py-8 text-center bg-white/50 dark:bg-slate-800/50 rounded-2xl">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">No recent history for this account</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ))}
                     </div>

@@ -55,14 +55,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem('access_token', access);
         localStorage.setItem('refresh_token', refresh);
         fetchUserProfile();
-        router.push('/');
+        router.push('/dashboard');
     };
 
     const logout = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         setUser(null);
-        router.push('/login');
+        router.push('/');
     };
 
     return (

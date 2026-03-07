@@ -7,7 +7,7 @@ import { LayoutDashboard, Wallet, HandCoins, BookUser, History, LogOut, Menu, X,
 import { useToast } from '@/context/ToastContext';
 
 const NAV_LINKS = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/accounts', label: 'Accounts', icon: Wallet },
     { href: '/loans', label: 'Loans', icon: HandCoins },
     { href: '/contacts', label: 'Contacts', icon: BookUser },
@@ -470,7 +470,7 @@ export default function Navbar() {
             <div className="xpense-nav-root">
                 <nav className={`xpense-nav${scrolled ? ' scrolled' : ''}`}>
                     {/* Logo */}
-                    <Link href="/" className="nav-logo">XPENSE</Link>
+                    <Link href={user ? "/dashboard" : "/"} className="nav-logo">XPENSE</Link>
 
                     {/* Center links — desktop & tablet */}
                     <div className="nav-center">

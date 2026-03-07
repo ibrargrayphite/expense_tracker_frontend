@@ -31,7 +31,7 @@ export default function AuthPage() {
     // Redirect if already logged in
     React.useEffect(() => {
         if (!authLoading && user) {
-            router.push('/');
+            router.push('/dashboard');
         }
     }, [user, authLoading, router]);
 
