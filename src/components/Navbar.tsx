@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { LayoutDashboard, Wallet, HandCoins, BookUser, History, LogOut, Menu, X, Tags, ChevronDown, Pencil, CalendarClock } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import api from '@/lib/api';
 
 const NAV_LINKS = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,7 +14,7 @@ const NAV_LINKS = [
     { href: '/contacts', label: 'Contacts', icon: BookUser },
     { href: '/categories', label: 'Categories', icon: Tags },
     { href: '/transactions', label: 'History', icon: History },
-    { href: '/planned-expenses', label: 'Planned', icon: CalendarClock },
+    { href: '/planned-expenses', label: 'Planned', icon: CalendarClock, urgent: true },
 ];
 
 export default function Navbar() {
@@ -22,7 +23,32 @@ export default function Navbar() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
+    const [hasUrgentPlanned, setHasUrgentPlanned] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (user) {
+            fetchUrgentStatus();
+        }
+    }, [user]);
+
+    const fetchUrgentStatus = async () => {
+        try {
+            const res = await api.get('planned-expenses/dropdown/');
+            const list = res.data.results || res.data;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const hasUrgent = list.some((p: any) => {
+                const dueDate = new Date(p.end_date);
+                dueDate.setHours(0, 0, 0, 0);
+                return !p.is_completed && dueDate <= today;
+            });
+            setHasUrgentPlanned(hasUrgent);
+        } catch (error) {
+            console.error('Error fetching urgent status:', error);
+        }
+    };
 
     const handleLogout = () => {
         logout();
@@ -138,6 +164,26 @@ export default function Navbar() {
                     color: rgba(255,255,255,0.92);
                     background: rgba(255,255,255,0.07);
                 }
+
+                .nav-link.nav-link-urgent {
+                    background: rgba(239, 68, 68, 0.18);
+                    color: #fca5a5;
+                    border: 1px solid rgba(239, 68, 68, 0.3);
+                    animation: urgentPulse 2s infinite;
+                }
+                
+                @keyframes urgentPulse {
+                    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                    70% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+                    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+                }
+
+                .nav-link.nav-link-urgent:hover {
+                    background: rgba(239, 68, 68, 0.28);
+                    color: #fff;
+                }
+
+                .nav-link.nav-link-urgent svg { opacity: 1; color: #ef4444; }
 
                 .nav-link svg { opacity: 0.65; transition: opacity 0.2s; flex-shrink: 0; }
                 .nav-link:hover svg { opacity: 1; }
@@ -474,12 +520,27 @@ export default function Navbar() {
 
                     {/* Center links — desktop & tablet */}
                     <div className="nav-center">
-                        {NAV_LINKS.map(({ href, label, icon: Icon }) => (
-                            <Link key={href} href={href} className="nav-link">
-                                <Icon size={15} />
-                                <span className="nav-link-label">{label}</span>
-                            </Link>
-                        ))}
+                        {NAV_LINKS.map(({ href, label, icon: Icon, urgent }) => {
+                            const isUrgentLink = urgent && hasUrgentPlanned;
+                            return (
+                                <Link key={href} href={href} className={`nav-link ${isUrgentLink ? 'nav-link-urgent' : ''}`} style={{ position: 'relative' }}>
+                                    <Icon size={15} />
+                                    <span className="nav-link-label">{label}</span>
+                                    {isUrgentLink && (
+                                        <span style={{
+                                            position: 'absolute',
+                                            top: '6px',
+                                            right: '4px',
+                                            width: '6px',
+                                            height: '6px',
+                                            backgroundColor: '#ef4444',
+                                            borderRadius: '50%',
+                                            border: '1px solid #0a0a14'
+                                        }} />
+                                    )}
+                                </Link>
+                            );
+                        })}
                     </div>
 
                     {/* Right side */}
@@ -556,17 +617,30 @@ export default function Navbar() {
                         </div>
                     </div>
 
-                    {NAV_LINKS.map(({ href, label, icon: Icon }) => (
-                        <Link
-                            key={href}
-                            href={href}
-                            className="mobile-link"
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            <Icon size={19} />
-                            {label}
-                        </Link>
-                    ))}
+                    {NAV_LINKS.map(({ href, label, icon: Icon, urgent }) => {
+                        const isUrgentLink = urgent && hasUrgentPlanned;
+                        return (
+                            <Link
+                                key={href}
+                                href={href}
+                                className={`mobile-link ${isUrgentLink ? 'nav-link-urgent' : ''}`}
+                                onClick={() => setMobileMenuOpen(false)}
+                                style={{ position: 'relative', marginBottom: isUrgentLink ? '4px' : '0' }}
+                            >
+                                <Icon size={19} />
+                                {label}
+                                {isUrgentLink && (
+                                    <span style={{
+                                        width: '8px',
+                                        height: '8px',
+                                        backgroundColor: '#ef4444',
+                                        borderRadius: '50%',
+                                        marginLeft: 'auto'
+                                    }} />
+                                )}
+                            </Link>
+                        );
+                    })}
 
                     <div className="mobile-separator" />
 

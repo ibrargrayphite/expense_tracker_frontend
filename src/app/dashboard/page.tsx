@@ -140,6 +140,23 @@ export default function Dashboard() {
         plannedExpenseTotal: plannedList.reduce((s: number, p: any) => s + parseFloat(p.amount), 0),
         plannedExpenseCount: plannedList.length,
       });
+
+      // Check for urgent planned expenses (overdue or due today)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const urgentCount = plannedList.filter((p: any) => {
+        const dueDate = new Date(p.end_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return !p.is_completed && dueDate <= today;
+      }).length;
+
+      if (urgentCount > 0) {
+        const hasShownToast = sessionStorage.getItem('urgent_planned_toast_shown');
+        if (!hasShownToast) {
+          showToast(`You have ${urgentCount} urgent planned expense(s) due!`, 'error');
+          sessionStorage.setItem('urgent_planned_toast_shown', 'true');
+        }
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       showToast(getErrorMessage(error), 'error');
